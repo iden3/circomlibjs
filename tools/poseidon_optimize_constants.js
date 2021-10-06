@@ -25,7 +25,7 @@ function stringifyBigInts(o) {
     }
 }
 
-const { C, M } = unstringifyBigInts(require("./poseidon_constants.json"));
+const { C, M } = unstringifyBigInts(require("../src/poseidon_constants.json"));
 
 const N_ROUNDS_F = 8;
 const N_ROUNDS_P = [56, 57, 56, 60, 60, 63, 64, 63, 60, 66, 60, 65, 70, 60, 64, 68];
@@ -290,7 +290,7 @@ async function run() {
 
     opt = stringifyBigInts(opt);
 
-    fs.writeFileSync(path.join(__dirname, "poseidon_constants_opt.json"), JSON.stringify(opt, null, 1), "utf8");
+    fs.writeFileSync(path.join(__dirname, "..", "src", "poseidon_constants_opt.json"), JSON.stringify(opt, null, 1), "utf8");
 }
 
 run().then(()=> {

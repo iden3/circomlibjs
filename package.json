@@ -4,7 +4,8 @@
   "description": "Javascript library to work with circomlibç",
   "main": "index.js",
   "scripts": {
-    "test": "mocha"
+    "test": "mocha",
+    "poseidonOptimizeConstants": "node tools/poseidon_optimize_constants.js"
   },
   "repository": {
     "type": "git",
