@@ -12,7 +12,7 @@ exports.getIV = (seed) => {
     if (typeof seed === "undefined") seed = SEED;
     const c = Web3Utils.keccak256(seed+"_iv");
     const cn = Scalar.fromString(Web3Utils.toBN(c).toString());
-    const iv = cn.mod(F.p);
+    const iv = Scalar.mod(cn, F.p);
     return iv;
 };
 
