@@ -1,6 +1,6 @@
 {
   "name": "circomlibjs",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Javascript library to work with circomlib",
   "main": "index.js",
   "scripts": {
