@@ -11,7 +11,7 @@ const NROUNDS = 91;
 exports.getIV = (seed) => {
     if (typeof seed === "undefined") seed = SEED;
     const c = Web3Utils.keccak256(seed+"_iv");
-    const cn = Scalar.FromString(Web3Utils.toBN(c).toString());
+    const cn = Scalar.fromString(Web3Utils.toBN(c).toString());
     const iv = cn.mod(F.p);
     return iv;
 };
