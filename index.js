@@ -1,7 +1,6 @@
 exports.babyjub = require("./src/babyjub");
 exports.eddsa = require("./src/eddsa");
 exports.evmasm = require("./src/evmasm");
-exports.g2_gencontract = require("./src/g2_gencontract");
 exports.mimc7 = require("./src/mimc7");
 exports.mimc_gencontract = require("./src/mimc_gencontract");
 exports.mimc_printconstants = require("./src/mimc_printconstants");
