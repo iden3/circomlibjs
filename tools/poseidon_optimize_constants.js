@@ -1,8 +1,7 @@
-const fs = require("fs");
-const path = require("path");
-const Scalar = require("ffjavascript").Scalar;
-const ZqField = require("ffjavascript").ZqField;
-const { unstringifyBigInts } = require("ffjavascript").utils;
+import fs from "fs";
+import path from "path";
+import {Scalar, ZqField, utils} from "ffjavascript";
+const { unstringifyBigInts } = utils;
 
 
 // Version to write in  hexadecimal
@@ -25,7 +24,7 @@ function stringifyBigInts(o) {
     }
 }
 
-const { C, M } = unstringifyBigInts(require("../src/poseidon_constants.json"));
+const { C, M } = unstringifyBigInts(JSON.parse(fs.readFileSync(path.join("src", "poseidon_constants.json"), "utf8")));
 
 const N_ROUNDS_F = 8;
 const N_ROUNDS_P = [56, 57, 56, 60, 60, 63, 64, 63, 60, 66, 60, 65, 70, 60, 64, 68];
@@ -290,7 +289,7 @@ async function run() {
 
     opt = stringifyBigInts(opt);
 
-    fs.writeFileSync(path.join(__dirname, "..", "src", "poseidon_constants_opt.json"), JSON.stringify(opt, null, 1), "utf8");
+    fs.writeFileSync(path.join( "src", "poseidon_constants_opt.js"), "export default " + JSON.stringify(opt, null, 1), "utf8");
 }
 
 run().then(()=> {

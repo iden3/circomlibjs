@@ -1,18 +1,17 @@
-
-const ZqField = require("ffjavascript").ZqField;
-const Scalar = require("ffjavascript").Scalar;
-
-const poseidon = require("./poseidon");
-
-const F = new ZqField(Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617"));
+import buildPoseidon from "./poseidon.js";
+import { getCurveFromName }  from "ffjavascript";
 
 
-exports.hash0 = function (left, right) {
-    return poseidon([left, right]);
-};
-
-exports.hash1 = function(key, value) {
-    return poseidon([key, value, F.one]);
-};
-
-exports.F = F;
+export default async function getHashes() {
+    const bn128 = await getCurveFromName("bn128");
+    const poseidon = await buildPoseidon();
+    return {
+        hash0: function (left, right) {
+            return poseidon([left, right]);
+        },
+        hash1: function(key, value) {
+            return poseidon([key, value, bn128.Fr.one]);
+        },
+        F: bn128.Fr
+    }
+}

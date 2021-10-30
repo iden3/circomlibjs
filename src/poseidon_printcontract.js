@@ -1,4 +1,4 @@
-const poseidonGenContract = require("./poseidon_gencontract");
+import {createCode} from "./poseidon_gencontract.js";
 
 if (process.argv.length != 3) {
     console.log("Usage: node poseidon_gencontract.js [numberOfInputs]");
@@ -9,5 +9,5 @@ const nInputs = Number(process.argv[2]);
 
 console.log(nInputs);
 
-console.log(poseidonGenContract.createCode(nInputs));
+console.log(createCode(nInputs));
 

@@ -1,233 +1,285 @@
-const createBlakeHash = require("blake-hash");
-const Scalar = require("ffjavascript").Scalar;
-const F1Field = require("ffjavascript").F1Field;
-const babyJub = require("./babyjub");
-const utils = require("ffjavascript").utils;
-const pedersenHash = require("./pedersenHash").hash;
-const mimc7 = require("./mimc7");
-const poseidon = require("./poseidon.js");
-const mimcsponge = require("./mimcsponge");
+import { Scalar } from "ffjavascript";
+import buildBabyJub from "./babyjub.js";
+import buildPedersenHash from "./pedersenhash.js";
+import buildMimc7 from "./mimc7.js";
+import buildPoseidon from "./poseidon.js";
+import buildMimcSponge from "./mimcsponge.js";
+import createBlakeHash from "blake-hash";
 
-
-exports.prv2pub= prv2pub;
-exports.sign = sign;
-exports.signMiMC = signMiMC;
-exports.signPoseidon = signPoseidon;
-exports.signMiMCSponge = signMiMCSponge;
-exports.verify = verify;
-exports.verifyMiMC = verifyMiMC;
-exports.verifyPoseidon = verifyPoseidon;
-exports.verifyMiMCSponge = verifyMiMCSponge;
-exports.packSignature = packSignature;
-exports.unpackSignature = unpackSignature;
-exports.pruneBuffer = pruneBuffer;
-
-
-function ensureBuffer(_buff) {
-    if (Buffer.isBuffer(_buff)) return buff;
-    return Buffer.from(_buff);
+export default async function buildEddsa() {
+    const babyJub = await buildBabyJub("bn128");
+    const pedersenHash = await buildPedersenHash();
+    const mimc7 = await buildMimc7();
+    const poseidon = await buildPoseidon();
+    const mimcSponge = await buildMimcSponge();
+    return new Eddsa(babyJub, pedersenHash, mimc7, poseidon, mimcSponge);
 }
 
-function pruneBuffer(_buff) {
-    const buff = Buffer.from(_buff);
-    buff[0] = buff[0] & 0xF8;
-    buff[31] = buff[31] & 0x7F;
-    buff[31] = buff[31] | 0x40;
-    return buff;
-}
+class Eddsa {
 
-function prv2pub(prv) {
-    const sBuff = pruneBuffer(createBlakeHash("blake512").update(prv).digest().slice(0,32));
-    let s = utils.leBuff2int(sBuff);
-    const A = babyJub.mulPointEscalar(babyJub.Base8, Scalar.shr(s,3));
-    return A;
-}
+    constructor(babyJub, pedersenHash, mimc7, poseidon, mimcSponge) {
+        this.babyJub = babyJub;
+        this.pedersenHash = pedersenHash;
+        this.mimc7 = mimc7;
+        this.poseidon = poseidon;
+        this.mimcSponge = mimcSponge;
+        this.F = babyJub.F;
+    }
 
-function sign(prv, msg) {
-    const h1 = createBlakeHash("blake512").update(prv).digest();
-    const sBuff = pruneBuffer(h1.slice(0,32));
-    const s = utils.leBuff2int(sBuff);
-    const A = babyJub.mulPointEscalar(babyJub.Base8, Scalar.shr(s, 3));
+    pruneBuffer(buff) {
+        buff[0] = buff[0] & 0xF8;
+        buff[31] = buff[31] & 0x7F;
+        buff[31] = buff[31] | 0x40;
+        return buff;
+    }
 
-    const rBuff = createBlakeHash("blake512").update(Buffer.concat([h1.slice(32,64), msg])).digest();
-    let r = utils.leBuff2int(rBuff);
-    const Fr = new F1Field(babyJub.subOrder);
-    r = Fr.e(r);
-    const R8 = babyJub.mulPointEscalar(babyJub.Base8, r);
-    const R8p = babyJub.packPoint(R8);
-    const Ap = babyJub.packPoint(A);
-    const hmBuff = pedersenHash(Buffer.concat([R8p, Ap, msg]));
-    const hm = utils.leBuff2int(hmBuff);
-    const S = Fr.add(r , Fr.mul(hm, s));
-    return {
-        R8: R8,
-        S: S
-    };
-}
+    prv2pub(prv) {
+        const F = this.babyJub.F;
+        const sBuff = this.pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
+        let s = Scalar.fromRprLE(sBuff, 0, 32);
+        const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, Scalar.shr(s,3));
+        return A;
+    }
 
-function signMiMC(prv, msg) {
-    const h1 = createBlakeHash("blake512").update(prv).digest();
-    const sBuff = pruneBuffer(h1.slice(0,32));
-    const s = utils.leBuff2int(sBuff);
-    const A = babyJub.mulPointEscalar(babyJub.Base8, Scalar.shr(s, 3));
+    signPedersen(prv, msg) {
+        const F = this.babyJub.F;
+        const sBuff = this.pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
+        const s = Scalar.fromRprLE(sBuff, 0, 32);
+        const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, Scalar.shr(s, 3));
 
-    const msgBuff = ensureBuffer(utils.leInt2Buff(msg, 32));
-    const rBuff = createBlakeHash("blake512").update(Buffer.concat([h1.slice(32,64), msgBuff])).digest();
-    let r = utils.leBuff2int(rBuff);
-    const Fr = new F1Field(babyJub.subOrder);
-    r = Fr.e(r);
-    const R8 = babyJub.mulPointEscalar(babyJub.Base8, r);
-    const hm = mimc7.multiHash([R8[0], R8[1], A[0], A[1], msg]);
-    const S = Fr.add(r , Fr.mul(hm, s));
-    return {
-        R8: R8,
-        S: S
-    };
-}
+        const composeBuff = new Uint8Array(32 + msg.length);
+        composeBuff.set(sBuff.slice(32), 0);
+        composeBuff.set(msg, 32);
+        const rBuff = createBlakeHash("blake512").update(Buffer.from(composeBuff)).digest();
+        let r = Scalar.mod(Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
+        const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
+        const R8p = this.babyJub.packPoint(R8);
+        const Ap = this.babyJub.packPoint(A);
 
-function signMiMCSponge(prv, msg) {
-    const h1 = createBlakeHash("blake512").update(prv).digest();
-    const sBuff = pruneBuffer(h1.slice(0,32));
-    const s = utils.leBuff2int(sBuff);
-    const A = babyJub.mulPointEscalar(babyJub.Base8, Scalar.shr(s, 3));
+        const composeBuff2 = new Uint8Array(64 + msg.length);
+        composeBuff2.set(R8p, 0);
+        composeBuff2.set(Ap, 32);
+        composeBuff2.set(msg, 64);
 
-    const msgBuff = ensureBuffer(utils.leInt2Buff(msg, 32));
-    const rBuff = createBlakeHash("blake512").update(Buffer.concat([h1.slice(32,64), msgBuff])).digest();
-    let r = utils.leBuff2int(rBuff);
-    const Fr = new F1Field(babyJub.subOrder);
-    r = Fr.e(r);
-    const R8 = babyJub.mulPointEscalar(babyJub.Base8, r);
-    const hm = mimcsponge.multiHash([R8[0], R8[1], A[0], A[1], msg]);
-    const S = Fr.add(r , Fr.mul(hm, s));
-    return {
-        R8: R8,
-        S: S
-    };
-}
+        const hmBuff = this.pedersenHash.hash(composeBuff2);
+        const hm = Scalar.fromRprLE(hmBuff, 0, 32);
 
-function signPoseidon(prv, msg) {
-    const h1 = createBlakeHash("blake512").update(prv).digest();
-    const sBuff = pruneBuffer(h1.slice(0,32));
-    const s = utils.leBuff2int(sBuff);
-    const A = babyJub.mulPointEscalar(babyJub.Base8, Scalar.shr(s, 3));
+        const S = Scalar.mod(
+            Scalar.add(
+                r,
+                Scalar.mul(hm, s)
+            ),
+            this.babyJub.subOrder
+        )
+        return {
+            R8: R8,
+            S: S
+        };
+    }
 
-    const msgBuff = ensureBuffer(utils.leInt2Buff(msg, 32));
-    const rBuff = createBlakeHash("blake512").update(Buffer.concat([h1.slice(32,64), msgBuff])).digest();
-    let r = utils.leBuff2int(rBuff);
-    const Fr = new F1Field(babyJub.subOrder);
-    r = Fr.e(r);
-    const R8 = babyJub.mulPointEscalar(babyJub.Base8, r);
-    const hm = poseidon([R8[0], R8[1], A[0], A[1], msg]);
-    const S = Fr.add(r , Fr.mul(hm, s));
-    return {
-        R8: R8,
-        S: S
-    };
-}
-
-function verify(msg, sig, A) {
-    // Check parameters
-    if (typeof sig != "object") return false;
-    if (!Array.isArray(sig.R8)) return false;
-    if (sig.R8.length!= 2) return false;
-    if (!babyJub.inCurve(sig.R8)) return false;
-    if (!Array.isArray(A)) return false;
-    if (A.length!= 2) return false;
-    if (!babyJub.inCurve(A)) return false;
-    if (sig.S>= babyJub.subOrder) return false;
-
-    const R8p = babyJub.packPoint(sig.R8);
-    const Ap = babyJub.packPoint(A);
-    const hmBuff = pedersenHash(Buffer.concat([R8p, Ap, msg]));
-    const hm = utils.leBuff2int(hmBuff);
-
-    const Pleft = babyJub.mulPointEscalar(babyJub.Base8, sig.S);
-    let Pright = babyJub.mulPointEscalar(A, Scalar.mul(hm,8));
-    Pright = babyJub.addPoint(sig.R8, Pright);
-
-    if (!babyJub.F.eq(Pleft[0],Pright[0])) return false;
-    if (!babyJub.F.eq(Pleft[1],Pright[1])) return false;
-    return true;
-}
-
-function verifyMiMC(msg, sig, A) {
-    // Check parameters
-    if (typeof sig != "object") return false;
-    if (!Array.isArray(sig.R8)) return false;
-    if (sig.R8.length!= 2) return false;
-    if (!babyJub.inCurve(sig.R8)) return false;
-    if (!Array.isArray(A)) return false;
-    if (A.length!= 2) return false;
-    if (!babyJub.inCurve(A)) return false;
-    if (sig.S>= babyJub.subOrder) return false;
-
-    const hm = mimc7.multiHash([sig.R8[0], sig.R8[1], A[0], A[1], msg]);
-
-    const Pleft = babyJub.mulPointEscalar(babyJub.Base8, sig.S);
-    let Pright = babyJub.mulPointEscalar(A, Scalar.mul(hm, 8));
-    Pright = babyJub.addPoint(sig.R8, Pright);
-
-    if (!babyJub.F.eq(Pleft[0],Pright[0])) return false;
-    if (!babyJub.F.eq(Pleft[1],Pright[1])) return false;
-    return true;
-}
+    signMiMC(prv, msg) {
+        const F = this.babyJub.F;
+        const sBuff = this.pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
+        const s = Scalar.fromRprLE(sBuff, 0, 32);
+        const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, Scalar.shr(s, 3));
 
 
-function verifyPoseidon(msg, sig, A) {
-    // Check parameters
-    if (typeof sig != "object") return false;
-    if (!Array.isArray(sig.R8)) return false;
-    if (sig.R8.length!= 2) return false;
-    if (!babyJub.inCurve(sig.R8)) return false;
-    if (!Array.isArray(A)) return false;
-    if (A.length!= 2) return false;
-    if (!babyJub.inCurve(A)) return false;
-    if (sig.S>= babyJub.subOrder) return false;
+        const composeBuff = new Uint8Array(32 + msg.length);
+        composeBuff.set(sBuff.slice(32), 0);
+        F.toRprLE(composeBuff, 32, msg);
+        const rBuff = createBlakeHash("blake512").update(Buffer.from(composeBuff)).digest();
+        let r = Scalar.mod(Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
+        const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
 
-    const hm = poseidon([sig.R8[0], sig.R8[1], A[0], A[1], msg]);
+        const hm = this.mimc7.multiHash([R8[0], R8[1], A[0], A[1], msg]);
+        const hms = Scalar.e(this.babyJub.F.toObject(hm));
+        const S = Scalar.mod(
+            Scalar.add(
+                r,
+                Scalar.mul(hms, s)
+            ),
+            this.babyJub.subOrder
+        )
+        return {
+            R8: R8,
+            S: S
+        };
+    }
 
-    const Pleft = babyJub.mulPointEscalar(babyJub.Base8, sig.S);
-    let Pright = babyJub.mulPointEscalar(A, Scalar.mul(hm, 8));
-    Pright = babyJub.addPoint(sig.R8, Pright);
+    signMiMCSponge(prv, msg) {
+        const F = this.babyJub.F;
+        const sBuff = this.pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
+        const s = Scalar.fromRprLE(sBuff, 0, 32);
+        const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, Scalar.shr(s, 3));
 
-    if (!babyJub.F.eq(Pleft[0],Pright[0])) return false;
-    if (!babyJub.F.eq(Pleft[1],Pright[1])) return false;
-    return true;
-}
+        const composeBuff = new Uint8Array(32 + msg.length);
+        composeBuff.set(sBuff.slice(32), 0);
+        F.toRprLE(composeBuff, 32, msg);
+        const rBuff = createBlakeHash("blake512").update(Buffer.from(composeBuff)).digest();
+        let r = Scalar.mod(Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
+        const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
 
-function verifyMiMCSponge(msg, sig, A) {
-    // Check parameters
-    if (typeof sig != "object") return false;
-    if (!Array.isArray(sig.R8)) return false;
-    if (sig.R8.length!= 2) return false;
-    if (!babyJub.inCurve(sig.R8)) return false;
-    if (!Array.isArray(A)) return false;
-    if (A.length!= 2) return false;
-    if (!babyJub.inCurve(A)) return false;
-    if (sig.S>= babyJub.subOrder) return false;
+        const hm = this.mimcSponge.multiHash([R8[0], R8[1], A[0], A[1], msg]);
+        const hms = Scalar.e(this.babyJub.F.toObject(hm));
+        const S = Scalar.mod(
+            Scalar.add(
+                r,
+                Scalar.mul(hms, s)
+            ),
+            this.babyJub.subOrder
+        )
+        return {
+            R8: R8,
+            S: S
+        };
+    }
 
-    const hm = mimcsponge.multiHash([sig.R8[0], sig.R8[1], A[0], A[1], msg]);
+    signPoseidon(prv, msg) {
+        const F = this.babyJub.F;
+        const sBuff = this.pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
+        const s = Scalar.fromRprLE(sBuff, 0, 32);
+        const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, Scalar.shr(s, 3));
 
-    const Pleft = babyJub.mulPointEscalar(babyJub.Base8, sig.S);
-    let Pright = babyJub.mulPointEscalar(A, hm.times(bigInt("8")));
-    Pright = babyJub.addPoint(sig.R8, Pright);
+        const composeBuff = new Uint8Array(32 + msg.length);
+        composeBuff.set(sBuff.slice(32), 0);
+        F.toRprLE(composeBuff, 32, msg);
+        const rBuff = createBlakeHash("blake512").update(Buffer.from(composeBuff)).digest();
+        let r = Scalar.mod(Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
+        const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
 
-    if (!babyJub.F.eq(Pleft[0],Pright[0])) return false;
-    if (!babyJub.F.eq(Pleft[1],Pright[1])) return false;
-    return true;
-}
+        const hm = this.poseidon([R8[0], R8[1], A[0], A[1], msg]);
+        const hms = Scalar.e(this.babyJub.F.toObject(hm));
+        const S = Scalar.mod(
+            Scalar.add(
+                r,
+                Scalar.mul(hms, s)
+            ),
+            this.babyJub.subOrder
+        )
+        return {
+            R8: R8,
+            S: S
+        };
+    }
 
-function packSignature(sig) {
-    const R8p = babyJub.packPoint(sig.R8);
-    const Sp = utils.leInt2Buff(sig.S, 32);
-    return Buffer.concat([R8p, Sp]);
-}
+    verifyPedersen(msg, sig, A) {
+        // Check parameters
+        if (typeof sig != "object") return false;
+        if (!Array.isArray(sig.R8)) return false;
+        if (sig.R8.length!= 2) return false;
+        if (!this.babyJub.inCurve(sig.R8)) return false;
+        if (!Array.isArray(A)) return false;
+        if (A.length!= 2) return false;
+        if (!this.babyJub.inCurve(A)) return false;
+        if (Scalar.geq(sig.S, this.babyJub.subOrder)) return false;
 
-function unpackSignature(sigBuff) {
-    return {
-        R8: babyJub.unpackPoint(sigBuff.slice(0,32)),
-        S: utils.leBuff2int(sigBuff.slice(32,64))
-    };
+        const R8p = this.babyJub.packPoint(sig.R8);
+        const Ap = this.babyJub.packPoint(A);
+
+
+        const composeBuff2 = new Uint8Array(64 + msg.length);
+        composeBuff2.set(R8p, 0);
+        composeBuff2.set(Ap, 32);
+        composeBuff2.set(msg, 64);
+
+
+        const hmBuff = this.pedersenHash.hash(composeBuff2);
+        const hm = Scalar.fromRprLE(hmBuff, 0, 32);
+
+        const Pleft = this.babyJub.mulPointEscalar(this.babyJub.Base8, sig.S);
+        let Pright = this.babyJub.mulPointEscalar(A, Scalar.mul(hm,8));
+        Pright = this.babyJub.addPoint(sig.R8, Pright);
+
+        if (!this.babyJub.F.eq(Pleft[0],Pright[0])) return false;
+        if (!this.babyJub.F.eq(Pleft[1],Pright[1])) return false;
+        return true;
+    }
+
+    verifyMiMC(msg, sig, A) {
+        // Check parameters
+        if (typeof sig != "object") return false;
+        if (!Array.isArray(sig.R8)) return false;
+        if (sig.R8.length!= 2) return false;
+        if (!this.babyJub.inCurve(sig.R8)) return false;
+        if (!Array.isArray(A)) return false;
+        if (A.length!= 2) return false;
+        if (!this.babyJub.inCurve(A)) return false;
+        if (sig.S>= this.babyJub.subOrder) return false;
+
+        const hm = this.mimc7.multiHash([sig.R8[0], sig.R8[1], A[0], A[1], msg]);
+        const hms = Scalar.e(this.babyJub.F.toObject(hm));
+
+        const Pleft = this.babyJub.mulPointEscalar(this.babyJub.Base8, sig.S);
+        let Pright = this.babyJub.mulPointEscalar(A, Scalar.mul(hms, 8));
+        Pright = this.babyJub.addPoint(sig.R8, Pright);
+
+        if (!this.babyJub.F.eq(Pleft[0],Pright[0])) return false;
+        if (!this.babyJub.F.eq(Pleft[1],Pright[1])) return false;
+        return true;
+    }
+
+    verifyPoseidon(msg, sig, A) {
+
+        // Check parameters
+        if (typeof sig != "object") return false;
+        if (!Array.isArray(sig.R8)) return false;
+        if (sig.R8.length!= 2) return false;
+        if (!this.babyJub.inCurve(sig.R8)) return false;
+        if (!Array.isArray(A)) return false;
+        if (A.length!= 2) return false;
+        if (!this.babyJub.inCurve(A)) return false;
+        if (sig.S>= this.babyJub.subOrder) return false;
+
+        const hm = this.poseidon([sig.R8[0], sig.R8[1], A[0], A[1], msg]);
+        const hms = Scalar.e(this.babyJub.F.toObject(hm));
+
+        const Pleft = this.babyJub.mulPointEscalar(this.babyJub.Base8, sig.S);
+        let Pright = this.babyJub.mulPointEscalar(A, Scalar.mul(hms, 8));
+        Pright = this.babyJub.addPoint(sig.R8, Pright);
+
+        if (!this.babyJub.F.eq(Pleft[0],Pright[0])) return false;
+        if (!this.babyJub.F.eq(Pleft[1],Pright[1])) return false;
+        return true;
+    }
+
+    verifyMiMCSponge(msg, sig, A) {
+
+        // Check parameters
+        if (typeof sig != "object") return false;
+        if (!Array.isArray(sig.R8)) return false;
+        if (sig.R8.length!= 2) return false;
+        if (!this.babyJub.inCurve(sig.R8)) return false;
+        if (!Array.isArray(A)) return false;
+        if (A.length!= 2) return false;
+        if (!this.babyJub.inCurve(A)) return false;
+        if (sig.S>= this.babyJub.subOrder) return false;
+
+        const hm = this.mimcSponge.multiHash([sig.R8[0], sig.R8[1], A[0], A[1], msg]);
+        const hms = Scalar.e(this.babyJub.F.toObject(hm));
+
+        const Pleft = this.babyJub.mulPointEscalar(this.babyJub.Base8, sig.S);
+        let Pright = this.babyJub.mulPointEscalar(A, Scalar.mul(hms, 8));
+        Pright = this.babyJub.addPoint(sig.R8, Pright);
+
+        if (!this.babyJub.F.eq(Pleft[0],Pright[0])) return false;
+        if (!this.babyJub.F.eq(Pleft[1],Pright[1])) return false;
+        return true;
+    }
+
+    packSignature(sig) {
+        const buff = new Uint8Array(64);
+        const R8p = this.babyJub.packPoint(sig.R8);
+        buff.set(R8p, 0)
+        const Sp = Scalar.toRprLE(buff, 32, sig.S, 32);
+        return buff;
+    }
+
+    unpackSignature(sigBuff) {
+        return {
+            R8: this.babyJub.unpackPoint(sigBuff.slice(0,32)),
+            S: Scalar.fromRprLE(sigBuff, 32, 32)
+        };
+    }
 }
 
 

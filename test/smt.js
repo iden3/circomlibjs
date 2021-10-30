@@ -1,21 +1,23 @@
-const chai = require("chai");
+import chai from "chai";
 
-const F1Field = require("ffjavascript").F1Field;
-const Scalar = require("ffjavascript").Scalar;
-exports.p = Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
-const Fr = new F1Field(exports.p);
-
-const smt = require("../src/smt.js");
+import buildBabyjub from "../src/babyjub.js";
+import  {newMemEmptyTrie} from "../src/smt.js";
 
 const assert = chai.assert;
 
 describe("SMT Javascript test", function () {
+    let Fr;
     this.timeout(100000);
-    before( async () => {
+    before(async () => {
+        const babyjub = await buildBabyjub();
+        Fr = babyjub.F;
+    });
+    after(async () => {
+        globalThis.curve_bn128.terminate();
     });
 
     it("Should insert 2 elements and empty them", async () => {
-        const tree = await smt.newMemEmptyTrie();
+        const tree = await newMemEmptyTrie();
         const key1 = Fr.e(111);
         const value1 = Fr.e(222);
         const key2 = Fr.e(333);
@@ -32,12 +34,12 @@ describe("SMT Javascript test", function () {
     it("Should insert 3 elements in dferent order and should be the same", async () => {
         const keys = [Fr.e(8), Fr.e(9), Fr.e(32)];
         const values = [Fr.e(88), Fr.e(99), Fr.e(3232)];
-        const tree1 = await smt.newMemEmptyTrie();
-        const tree2 = await smt.newMemEmptyTrie();
-        const tree3 = await smt.newMemEmptyTrie();
-        const tree4 = await smt.newMemEmptyTrie();
-        const tree5 = await smt.newMemEmptyTrie();
-        const tree6 = await smt.newMemEmptyTrie();
+        const tree1 = await newMemEmptyTrie();
+        const tree2 = await newMemEmptyTrie();
+        const tree3 = await newMemEmptyTrie();
+        const tree4 = await newMemEmptyTrie();
+        const tree5 = await newMemEmptyTrie();
+        const tree6 = await newMemEmptyTrie();
 
         await tree1.insert(keys[0],values[0]);
         await tree1.insert(keys[1],values[1]);
@@ -126,7 +128,7 @@ describe("SMT Javascript test", function () {
             }
             return rArr;
         }
-        const tree = await smt.newMemEmptyTrie();
+        const tree = await newMemEmptyTrie();
         const arr = [];
         const N = 100;
         for (let i=0; i<N; i++) {
@@ -146,8 +148,8 @@ describe("SMT Javascript test", function () {
     });
 
     it("Should test update", async () => {
-        const tree1 = await smt.newMemEmptyTrie();
-        const tree2 = await smt.newMemEmptyTrie();
+        const tree1 = await newMemEmptyTrie();
+        const tree2 = await newMemEmptyTrie();
 
         await tree1.insert(8,88);
         await tree1.insert(9,99,);
@@ -165,7 +167,7 @@ describe("SMT Javascript test", function () {
     });
 
     it("Should test update with same key-value", async () => {
-        const tree1 = await smt.newMemEmptyTrie();
+        const tree1 = await newMemEmptyTrie();
 
         await tree1.insert(8,88);
         await tree1.update(8,88);

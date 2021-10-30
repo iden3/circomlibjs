@@ -3,9 +3,10 @@
 //
 
 
-const Web3Utils = require("web3-utils");
+import ethers from "ethers";
+import {Scalar} from "ffjavascript";
 
-class Contract {
+export default class Contract {
     constructor() {
         this.code = [];
         this.labels = {};
@@ -26,7 +27,7 @@ class Contract {
 
         while  (genLoadedLength!=setLoaderLength) {
             setLoaderLength = genLoadedLength;
-            C = new module.exports();
+            C = new Contract();
             C.codesize();
             C.push(setLoaderLength);
             C.push(0);
@@ -38,7 +39,7 @@ class Contract {
             genLoadedLength = C.code.length;
         }
 
-        return Web3Utils.bytesToHex(C.code.concat(this.code));
+        return ethers.utils.hexlify(C.code.concat(this.code));
     }
 
     stop() { this.code.push(0x00); }
@@ -154,22 +155,25 @@ class Contract {
     }
 
     push(data) {
-        if (typeof data === "number") {
-            let isNeg;
-            if (data<0) {
-                isNeg = true;
-                data = -data;
+        if ((typeof data !== "string") || (data.slice(0,2) != "0x")) {
+            let v = Scalar.e(data);
+            if (Scalar.isNegative(v)) {
+                v = Scalar.add(Scalar.shl(Scalar.e(1), 256), v);
             }
-            data = data.toString(16);
-            if (data.length % 2 == 1) data = "0" + data;
-            data = "0x" + data;
-            if (isNeg) data = "-"+data;
+            let S = Scalar.toString(v, 16);
+            if (S.length % 2) S = "0"+S;
+            S = "0x" +S;
+            data = S;
         }
-        const d = Web3Utils.hexToBytes(Web3Utils.toHex(data));
+        const d = ethers.utils.arrayify(data);
         if (d.length == 0 || d.length > 32) {
             throw new Error("Assertion failed");
         }
-        this.code = this.code.concat([0x5F + d.length], d);
+        const a = [];
+        this.code.push(0x5F + d.length);
+        for (let i=0; i<d.length; i++) {
+            this.code.push(d[i]);
+        }
     }
 
     dup(n) {
@@ -203,6 +207,4 @@ class Contract {
     invalid()  { this.code.push(0xfe); }
     selfdestruct()  { this.code.push(0xff); }
 }
-
-module.exports = Contract;
 

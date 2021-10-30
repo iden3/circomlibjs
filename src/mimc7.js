@@ -1,66 +1,79 @@
-const Scalar = require("ffjavascript").Scalar;
-const ZqField = require("ffjavascript").ZqField;
+import {getCurveFromName, Scalar} from "ffjavascript";
 
-const Web3Utils = require("web3-utils");
-const F = new ZqField(Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617"));
-exports.F = F;
+
+import ethers from "ethers";
 
 const SEED = "mimc";
 const NROUNDS = 91;
 
-exports.getIV = (seed) => {
-    if (typeof seed === "undefined") seed = SEED;
-    const c = Web3Utils.keccak256(seed+"_iv");
-    const cn = Scalar.fromString(Web3Utils.toBN(c).toString());
-    const iv = Scalar.mod(cn, F.p);
-    return iv;
-};
+export default async function buildMimc7() {
+    const bn128 = await getCurveFromName("bn128");
+    return new Mimc7(bn128.Fr);
+}
 
-exports.getConstants = (seed, nRounds) => {
-    if (typeof seed === "undefined") seed = SEED;
-    if (typeof nRounds === "undefined") nRounds = NROUNDS;
-    const cts = new Array(nRounds);
-    let c = Web3Utils.keccak256(SEED);
-    for (let i=1; i<nRounds; i++) {
-        c = Web3Utils.keccak256(c);
 
-        const n1 = Web3Utils.toBN(c).mod(Web3Utils.toBN(F.p.toString()));
-        const c2 = Web3Utils.padLeft(Web3Utils.toHex(n1), 64);
-        cts[i] = Scalar.fromString(Web3Utils.toBN(c2).toString());
+class Mimc7 {
+    constructor (F) {
+        this.F = F;
+        this.cts = this.getConstants(SEED, 91);
     }
-    cts[0] = F.e(0);
-    return cts;
-};
 
-const cts = exports.getConstants(SEED, 91);
+    getIV(seed) {
+        const F = this.F;
+        if (typeof seed === "undefined") seed = SEED;
+        const c = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(seed+"_iv"));
+        const cn = Scalar.e(c);
+        const iv = Scalar.mod(cn, F.p);
+        return iv;
+    };
 
-exports.hash =  (_x_in, _k) =>{
-    const x_in = F.e(_x_in);
-    const k = F.e(_k);
-    let r;
-    for (let i=0; i<NROUNDS; i++) {
-        const c = cts[i];
-        const t = (i==0) ? F.add(x_in, k) : F.add(F.add(r, k), c);
-        r = F.pow(t, 7);
-    }
-    return F.add(r, k);
-};
+    getConstants(seed, nRounds) {
+        const F = this.F;
+        if (typeof seed === "undefined") seed = SEED;
+        if (typeof nRounds === "undefined") nRounds = NROUNDS;
+        const cts = new Array(nRounds);
+        let c = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(SEED));
+        for (let i=1; i<nRounds; i++) {
+            c = ethers.utils.keccak256(c);
 
-exports.multiHash = (arr, key) => {
-    let r;
-    if (typeof(key) === "undefined") {
-        r = F.zero;
-    } else {
-        r = key;
+            cts[i] = F.e(c);
+        }
+        cts[0] = F.e(0);
+        return cts;
     }
-    for (let i=0; i<arr.length; i++) {
-        r = F.add(
-            F.add(
-                r,
-                arr[i]
-            ),
-            exports.hash(F.e(arr[i]), r)
-        );
+
+    hash (_x_in, _k) {
+        const F = this.F;
+        const x_in = F.e(_x_in);
+        const k = F.e(_k);
+        let r;
+        for (let i=0; i<NROUNDS; i++) {
+            const c = this.cts[i];
+            const t = (i==0) ? F.add(x_in, k) : F.add(F.add(r, k), c);
+            const t2 = F.square(t);
+            const t4 = F.square(t2);
+            r = F.mul(F.mul(t4, t2), t);
+        }
+        return F.add(r, k);
     }
-    return r;
-};
+
+    multiHash(arr, key) {
+        const F = this.F;
+        let r;
+        if (typeof(key) === "undefined") {
+            r = F.zero;
+        } else {
+            r = key;
+        }
+        for (let i=0; i<arr.length; i++) {
+            r = F.add(
+                F.add(
+                    r,
+                    arr[i]
+                ),
+                this.hash(F.e(arr[i]), r)
+            );
+        }
+        return r;
+    }
+}

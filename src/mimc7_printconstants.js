@@ -1,12 +1,12 @@
-import buildMimcSponge from "./mimcsponge.js";
+import buildMimc7 from "./mimc7.js";
 
 async function run() {
-    const mimcsponge = await buildMimcSponge();
-    const nRounds = 220;
+    const mimc7 = await buildMimc7();
+    const nRounds = 91;
     let S = "[\n";
-    const cts = mimcsponge.getConstants();
+    const cts = mimc7.getConstants();
     for (let i=0; i<nRounds; i++) {
-        S = S + mimcsponge.F.toString(cts[i]);
+        S = S + mimc7.F.toString(cts[i]);
         if (i<nRounds-1) S = S + ",";
         S=S+"\n";
     }
@@ -22,3 +22,4 @@ run().then(()=> {
     console.log(err.message);
     process.exit(1);
 });
+

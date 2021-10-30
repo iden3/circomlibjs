@@ -1,26 +1,27 @@
 import chai from "chai";
-import {createCode, abi} from "../src/mimcsponge_gencontract.js";
+import {createCode, abi} from "../src/mimc7_gencontract.js";
 import ethers from "ethers";
 import ganache from "ganache-cli";
 
-import buildMimcSponge from "../src/mimcsponge.js";
+import buildMimc7 from "../src/mimc7.js";
 
 
 const assert = chai.assert;
 const log = (msg) => { if (process.env.MOCHA_VERBOSE) console.log(msg); };
 
-const SEED = "mimcsponge";
+const SEED = "mimc";
 
-describe("MiMC Sponge Smart contract test", () => {
+describe("MiMC Smart contract test", function () {
     let mimc;
     let mimcJS;
     let account;
+    this.timeout(100000);
 
     before(async () => {
         const provider = new ethers.providers.Web3Provider(ganache.provider());
 
         account = provider.getSigner(0);
-        mimcJS = await buildMimcSponge();
+        mimcJS = await buildMimc7();
     });
     after(async () => {
         globalThis.curve_bn128.terminate();
@@ -31,7 +32,7 @@ describe("MiMC Sponge Smart contract test", () => {
 
         const C = new ethers.ContractFactory(
             abi,
-            createCode(SEED, 220),
+            createCode(SEED, 91),
             account
           );
 
@@ -40,16 +41,16 @@ describe("MiMC Sponge Smart contract test", () => {
 
     it("Shold calculate the mimc correctly", async () => {
 
-        const res = await mimc["MiMCSponge"](1,2, 3);
+        const res = await mimc["MiMCpe7"](1,2);
 
         // console.log("Cir: " + bigInt(res.toString(16)).toString(16));
 
-        const res2 = mimcJS.hash(1,2, 3);
+        const res2 = mimcJS.hash(1,2);
         // console.log("Ref: " + bigInt(res2).toString(16));
 
-        assert.equal(res.xL.toString(), mimcJS.F.toString(res2.xL));
-        assert.equal(res.xR.toString(), mimcJS.F.toString(res2.xR));
+        assert.equal(res.toString(), mimcJS.F.toString(res2));
 
     });
+
 });
 

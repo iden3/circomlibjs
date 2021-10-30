@@ -1,4 +1,4 @@
-const mimcGenContract = require("./mimcsponge_gencontract");
+import {createCode} from "./mimcsponge_gencontract.js";
 
 const SEED = "mimcsponge";
 
@@ -9,5 +9,5 @@ if (typeof process.argv[2] != "undefined") {
     nRounds = 220;
 }
 
-console.log(mimcGenContract.createCode(SEED, nRounds));
+console.log(createCode(SEED, nRounds));
 

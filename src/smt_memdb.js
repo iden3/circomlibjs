@@ -1,14 +1,8 @@
-
-const Scalar = require("ffjavascript").Scalar;
-const ZqField = require("ffjavascript").ZqField;
-
-// Prime 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001
-const F = new ZqField(Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617"));
-
-class SMTMemDb {
-    constructor() {
+export default class SMTMemDb {
+    constructor(F) {
         this.nodes = {};
         this.root = F.zero;
+        this.F = F;
     }
 
     async getRoot() {
@@ -16,14 +10,15 @@ class SMTMemDb {
     }
 
     _key2str(k) {
-        // const keyS = bigInt(key).leInt2Buff(32).toString("hex");
-        const keyS = k.toString();
+        const F = this.F;
+        const keyS = this.F.toString(k);
         return keyS;
     }
 
     _normalize(n) {
+        const F = this.F;
         for (let i=0; i<n.length; i++) {
-            n[i] = F.e(n[i]);
+            n[i] = this.F.e(n[i]);
         }
     }
 
@@ -60,4 +55,3 @@ class SMTMemDb {
     }
 }
 
-module.exports = SMTMemDb;

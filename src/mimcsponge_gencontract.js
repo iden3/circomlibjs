@@ -2,13 +2,13 @@
 // License: LGPL-3.0+
 //
 
-const Web3Utils = require("web3-utils");
+import ethers from "ethers";
 
-const Contract = require("./evmasm");
+import Contract from "./evmasm.js";
 
-function createCode(seed, n) {
+export function createCode(seed, n) {
 
-    let ci = Web3Utils.keccak256(seed);
+    let ci = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(seed));
 
     const C = new Contract();
 
@@ -51,7 +51,7 @@ function createCode(seed, n) {
 
     for (let i=0; i<n-1; i++) {
         if (i < n-2) {
-          ci = Web3Utils.keccak256(ci);
+          ci = ethers.utils.keccak256(ci);
         } else {
           ci = "0x00";
         }
@@ -89,7 +89,7 @@ function createCode(seed, n) {
     return C.createTxData();
 }
 
-module.exports.abi = [
+export const abi = [
     {
         "constant": true,
         "inputs": [
@@ -122,7 +122,4 @@ module.exports.abi = [
         "type": "function"
     }
 ];
-
-module.exports.createCode = createCode;
-
 

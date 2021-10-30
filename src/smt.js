@@ -1,16 +1,27 @@
-const Scalar = require("ffjavascript").Scalar;
-const SMTMemDB = require("./smt_memdb");
-const {hash0, hash1, F} = require("./smt_hashes_poseidon");
+import { Scalar } from "ffjavascript";
+import SMTMemDB from "./smt_memdb.js";
+import getHashes from "./smt_hashes_poseidon.js";
 
-class SMT {
+export async function buildSMT(db, root) {
 
-    constructor(db, root) {
+    const {hash0, hash1,F} = await getHashes();
+
+    return new SMT(db, root, hash0, hash1, F);
+}
+
+export class SMT {
+
+    constructor(db, root, hash0, hash1, F) {
         this.db = db;
         this.root = root;
+        this.hash0 = hash0;
+        this.hash1 = hash1;
+        this.F = F;
     }
 
     _splitBits(_key) {
-        const res = Scalar.bits(_key);
+        const F = this.F;
+        const res = Scalar.bits(F.toObject(_key));
 
         while (res.length<256) res.push(false);
 
@@ -18,9 +29,9 @@ class SMT {
     }
 
     async update(_key, _newValue) {
-        const key = Scalar.e(_key);
+        const F = this.F;
+        const key = F.e(_key);
         const newValue = F.e(_newValue);
-
 
         const resFind = await this.find(key);
         const res = {};
@@ -34,8 +45,8 @@ class SMT {
         const ins = [];
         const dels = [];
 
-        let rtOld = hash1(key, resFind.foundValue);
-        let rtNew = hash1(key, newValue);
+        let rtOld = this.hash1(key, resFind.foundValue);
+        let rtNew = this.hash1(key, newValue);
         ins.push([rtNew, [1, key, newValue ]]);
         dels.push(rtOld);
 
@@ -50,8 +61,8 @@ class SMT {
                 oldNode = [rtOld, sibling];
                 newNode = [rtNew, sibling];
             }
-            rtOld = hash0(oldNode[0], oldNode[1]);
-            rtNew = hash0(newNode[0], newNode[1]);
+            rtOld = this.hash0(oldNode[0], oldNode[1]);
+            rtNew = this.hash0(newNode[0], newNode[1]);
             dels.push(rtOld);
             ins.push([rtNew, newNode]);
         }
@@ -67,7 +78,8 @@ class SMT {
     }
 
     async delete(_key) {
-        const key = Scalar.e(_key);
+        const F = this.F;
+        const key = F.e(_key);
 
         const resFind = await this.find(key);
         if (!resFind.found) throw new Error("Key does not exists");
@@ -80,7 +92,7 @@ class SMT {
 
         const dels = [];
         const ins = [];
-        let rtOld = hash1(key, resFind.foundValue);
+        let rtOld = this.hash1(key, resFind.foundValue);
         let rtNew;
         dels.push(rtOld);
 
@@ -118,9 +130,9 @@ class SMT {
             }
             const oldSibling = resFind.siblings[level];
             if (keyBits[level]) {
-                rtOld = hash0(oldSibling, rtOld);
+                rtOld = this.hash0(oldSibling, rtOld);
             } else {
-                rtOld = hash0(rtOld, oldSibling);
+                rtOld = this.hash0(rtOld, oldSibling);
             }
             dels.push(rtOld);
             if (!F.isZero(newSibling)) {
@@ -135,7 +147,7 @@ class SMT {
                 } else {
                     newNode = [rtNew, newSibling];
                 }
-                rtNew = hash0(newNode[0], newNode[1]);
+                rtNew = this.hash0(newNode[0], newNode[1]);
                 ins.push([rtNew, newNode]);
             }
         }
@@ -152,7 +164,8 @@ class SMT {
     }
 
     async insert(_key, _value) {
-        const key = Scalar.e(_key);
+        const F = this.F;
+        const key = F.e(_key);
         const value = F.e(_value);
         let addedOne = false;
         const res = {};
@@ -173,7 +186,7 @@ class SMT {
             for (let i= res.siblings.length; oldKeyits[i] == newKeyBits[i]; i++) {
                 res.siblings.push(F.zero);
             }
-            rtOld = hash1(resFind.notFoundKey, resFind.notFoundValue);
+            rtOld = this.hash1(resFind.notFoundKey, resFind.notFoundValue);
             res.siblings.push(rtOld);
             addedOne = true;
             mixed = false;
@@ -185,7 +198,7 @@ class SMT {
         const inserts = [];
         const dels = [];
 
-        let rt = hash1(key, value);
+        let rt = this.hash1(key, value);
         inserts.push([rt,[1, key, value]] );
 
         for (let i=res.siblings.length-1; i>=0; i--) {
@@ -195,9 +208,9 @@ class SMT {
             if (mixed) {
                 const oldSibling = resFind.siblings[i];
                 if (newKeyBits[i]) {
-                    rtOld = hash0(oldSibling, rtOld);
+                    rtOld = this.hash0(oldSibling, rtOld);
                 } else {
-                    rtOld = hash0(rtOld, oldSibling);
+                    rtOld = this.hash0(rtOld, oldSibling);
                 }
                 dels.push(rtOld);
             }
@@ -205,10 +218,10 @@ class SMT {
 
             let newRt;
             if (newKeyBits[i]) {
-                newRt = hash0(res.siblings[i], rt);
+                newRt = this.hash0(res.siblings[i], rt);
                 inserts.push([newRt,[res.siblings[i], rt]] );
             } else {
-                newRt = hash0(rt, res.siblings[i]);
+                newRt = this.hash0(rt, res.siblings[i]);
                 inserts.push([newRt,[rt, res.siblings[i]]] );
             }
             rt = newRt;
@@ -232,12 +245,14 @@ class SMT {
         return res;
     }
 
-    async find(key) {
+    async find(_key) {
+        const key = this.F.e(_key);
         const keyBits = this._splitBits(key);
         return await this._find(key, keyBits, this.root, 0);
     }
 
     async _find(key, keyBits, root, level) {
+        const F = this.F;
         if (typeof root === "undefined") root = this.root;
 
         let res;
@@ -284,18 +299,11 @@ class SMT {
     }
 }
 
-async function loadFromFile(fileName) {
 
-}
-
-async function newMemEmptyTrie() {
-    const db = new SMTMemDB();
+export async function newMemEmptyTrie() {
+    const {hash0, hash1,F} = await getHashes();
+    const db = new SMTMemDB(F);
     const rt = await db.getRoot();
-    const smt = new SMT(db, rt);
+    const smt = new SMT(db, rt, hash0, hash1, F);
     return smt;
 }
-
-module.exports.loadFromFile = loadFromFile;
-module.exports.newMemEmptyTrie = newMemEmptyTrie;
-module.exports.SMT = SMT;
-module.exports.SMTMemDB = SMTMemDB;

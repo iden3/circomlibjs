@@ -2,11 +2,14 @@
 // License: LGPL-3.0+
 //
 
-const Contract = require("./evmasm");
-const { unstringifyBigInts } = require("ffjavascript").utils;
-const Web3Utils = require("web3-utils");
+import Contract from "./evmasm.js";
+import { utils } from "ffjavascript";
+const { unstringifyBigInts } = utils;
+import ethers from "ethers";
 
-const { C:K, M } = unstringifyBigInts(require("./poseidon_constants.json"));
+import poseidonConstants from "./poseidon_constants.js";
+
+const { C:K, M } = unstringifyBigInts(poseidonConstants);
 
 const N_ROUNDS_F = 8;
 const N_ROUNDS_P = [56, 57, 56, 60, 60, 63, 64, 63];
@@ -17,7 +20,7 @@ function toHex256(a) {
     return "0x" + S;
 }
 
-function createCode(nInputs) {
+export function createCode(nInputs) {
 
     if (( nInputs<1) || (nInputs>8)) throw new Error("Invalid number of inputs. Must be 1<=nInputs<=8");
     const t = nInputs + 1;
@@ -101,10 +104,10 @@ function createCode(nInputs) {
     C.calldataload();
     C.div();
     C.dup(0);
-    C.push(Web3Utils.keccak256(`poseidon(uint256[${nInputs}])`).slice(0, 10)); // poseidon(uint256[n])
+    C.push(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`poseidon(uint256[${nInputs}])`)).slice(0, 10)); // poseidon(uint256[n])
     C.eq();
     C.swap(1);
-    C.push(Web3Utils.keccak256(`poseidon(bytes32[${nInputs}])`).slice(0, 10)); // poseidon(bytes32[n])
+    C.push(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`poseidon(bytes32[${nInputs}])`)).slice(0, 10)); // poseidon(bytes32[n])
     C.eq();
     C.or();
     C.jmpi("start");
@@ -155,7 +158,7 @@ function createCode(nInputs) {
     return C.createTxData();
 }
 
-function generateABI(nInputs) {
+export function generateABI(nInputs) {
     return [
         {
             "constant": true,
@@ -202,7 +205,5 @@ function generateABI(nInputs) {
     ];
 }
 
-module.exports.generateABI = generateABI;
-module.exports.createCode = createCode;
 
 
