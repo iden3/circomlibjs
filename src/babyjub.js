@@ -1,7 +1,7 @@
 import { getCurveFromName, Scalar }  from "ffjavascript";
 
 export default async function buildBabyJub() {
-    const bn128 = await getCurveFromName("bn128");
+    const bn128 = await getCurveFromName("bn128", true);
     return new BabyJub(bn128.Fr);
 }
 

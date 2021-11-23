@@ -9,9 +9,6 @@ describe("Mimc Sponge test", function () {
     before(async () => {
         mimcSponge = await buildMimcSponge();
     });
-    after(async () => {
-        globalThis.curve_bn128.terminate();
-    });
 
     it("Should check multihash reference 2", async () => {
         const res2 = mimcSponge.multiHash([1,2]);

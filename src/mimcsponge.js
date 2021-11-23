@@ -5,7 +5,7 @@ const SEED = "mimcsponge";
 const NROUNDS = 220;
 
 export default async function buildMimcSponge() {
-    const bn128 = await getCurveFromName("bn128");
+    const bn128 = await getCurveFromName("bn128", true);
     return new MimcSponge(bn128.Fr);
 }
 

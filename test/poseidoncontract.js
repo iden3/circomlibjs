@@ -1,6 +1,6 @@
 import chai from "chai";
 import {createCode, generateABI} from "../src/poseidon_gencontract.js";
-import buildPoseidon from "../src/poseidon.js";
+import buildPoseidon from "../src/poseidon_wasm.js";
 import ethers from "ethers";
 import ganache from "ganache-cli";
 
@@ -21,9 +21,6 @@ describe("Poseidon Smart contract test", function () {
 
         account = provider.getSigner(0);
         poseidon = await buildPoseidon();
-    });
-    after(async () => {
-        globalThis.curve_bn128.terminate();
     });
 
     it("Should deploy the contract", async () => {

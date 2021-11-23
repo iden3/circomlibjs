@@ -1,7 +1,7 @@
 import chai from "chai";
 const assert = chai.assert;
 
-import buildPedersenHash from "../src/pedersenhash.js";
+import buildPedersenHash from "../src/pedersen_hash.js";
 
 function buff2hex(buff) {
     function i2hex(i) {
@@ -15,9 +15,6 @@ describe("Pedersen Hash test", function () {
 
     before(async () => {
         pedersen = await buildPedersenHash();
-    });
-    after(async () => {
-        globalThis.curve_bn128.terminate();
     });
 
     it("Should check multihash reference 2", async () => {

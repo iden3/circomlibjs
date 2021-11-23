@@ -12,7 +12,7 @@
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
-            "args": ["test/pedersenhash.js"]
+            "args": ["test/mimc7.js"]
         },
         {
             "type": "pwa-node",

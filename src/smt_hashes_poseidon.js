@@ -1,9 +1,9 @@
-import buildPoseidon from "./poseidon.js";
+import buildPoseidon from "./poseidon_wasm.js";
 import { getCurveFromName }  from "ffjavascript";
 
 
 export default async function getHashes() {
-    const bn128 = await getCurveFromName("bn128");
+    const bn128 = await getCurveFromName("bn128", true);
     const poseidon = await buildPoseidon();
     return {
         hash0: function (left, right) {

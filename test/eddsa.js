@@ -20,9 +20,6 @@ describe("EdDSA js test", function () {
     before(async () => {
         eddsa = await buildEddsa();
     });
-    after(async () => {
-        globalThis.curve_bn128.terminate();
-    });
 
 
     it("Sign (using Pedersen) a single 10 bytes from 0 to 9", () => {

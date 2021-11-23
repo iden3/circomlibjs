@@ -12,9 +12,6 @@ describe("SMT Javascript test", function () {
         const babyjub = await buildBabyjub();
         Fr = babyjub.F;
     });
-    after(async () => {
-        globalThis.curve_bn128.terminate();
-    });
 
     it("Should insert 2 elements and empty them", async () => {
         const tree = await newMemEmptyTrie();

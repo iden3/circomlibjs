@@ -33,7 +33,7 @@ function unsringifyConstants(Fr, o) {
 }
 
 export default async function buildPoseidon() {
-    const bn128 = await getCurveFromName("bn128");
+    const bn128 = await getCurveFromName("bn128", true);
 
     const F = bn128.Fr;
 

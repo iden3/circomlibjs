@@ -23,9 +23,6 @@ describe("MiMC Smart contract test", function () {
         account = provider.getSigner(0);
         mimcJS = await buildMimc7();
     });
-    after(async () => {
-        globalThis.curve_bn128.terminate();
-    });
 
     it("Should deploy the contract", async () => {
 

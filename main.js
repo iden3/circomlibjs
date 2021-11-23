@@ -10,13 +10,14 @@ export {default as buildMimcSponge} from "./src/mimcsponge.js";
 import * as _mimcSpongeContract  from "./src/mimcsponge_gencontract.js";
 export const mimcSpongecontract=_mimcSpongeContract;
 
-export {default as buildPedersenHash} from "./src/pedersenhash.js";
+export {default as buildPedersenHash} from "./src/pedersen_hash.js";
 
-export {default as buildPoseidon} from "./src/poseidon.js";
+export {default as buildPoseidon} from "./src/poseidon_wasm.js";
 import * as _poseidonContract  from "./src/poseidon_gencontract.js";
 export const poseidonContract=_poseidonContract;
 
-export {default as buildPoseidonSlow} from "./src/poseidon_slow.js";
+export {default as buildPoseidonReference} from "./src/poseidon_reference.js";
+export {default as buildPoseidonOpt} from "./src/poseidon_opt.js";
 
 export {SMT, buildSMT, newMemEmptyTrie} from "./src/smt.js";
 

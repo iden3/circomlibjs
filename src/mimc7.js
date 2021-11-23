@@ -7,7 +7,7 @@ const SEED = "mimc";
 const NROUNDS = 91;
 
 export default async function buildMimc7() {
-    const bn128 = await getCurveFromName("bn128");
+    const bn128 = await getCurveFromName("bn128", true);
     return new Mimc7(bn128.Fr);
 }
 
@@ -63,13 +63,13 @@ class Mimc7 {
         if (typeof(key) === "undefined") {
             r = F.zero;
         } else {
-            r = key;
+            r = F.e(key);
         }
         for (let i=0; i<arr.length; i++) {
             r = F.add(
                 F.add(
                     r,
-                    arr[i]
+                    F.e(arr[i])
                 ),
                 this.hash(F.e(arr[i]), r)
             );
