@@ -18,7 +18,7 @@ async function run() {
     }
 
     for (let i=0; i < nBases; i++) {
-        const p = pedersenHash.getBasePoint(i);
+        const p = pedersenHash.getBasePoint(baseHash, i);
         console.log(`[${pedersenHash.babyJub.F.toString(p[0])},${pedersenHash.babyJub.F.toString(p[1])}]`);
     }
 
