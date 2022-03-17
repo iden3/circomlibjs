@@ -1,7 +1,6 @@
 import {getCurveFromName, Scalar} from "ffjavascript";
 
-
-import ethers from "ethers";
+import { ethers } from "ethers";
 
 const SEED = "mimc";
 const NROUNDS = 91;

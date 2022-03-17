@@ -1,6 +1,6 @@
 import chai from "chai";
 import {createCode, abi} from "../src/mimcsponge_gencontract.js";
-import ethers from "ethers";
+import { ethers } from "ethers";
 import ganache from "ganache-cli";
 
 import buildMimcSponge from "../src/mimcsponge.js";

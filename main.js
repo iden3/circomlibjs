@@ -10,7 +10,7 @@ export {default as buildMimcSponge} from "./src/mimcsponge.js";
 import * as _mimcSpongeContract  from "./src/mimcsponge_gencontract.js";
 export const mimcSpongecontract=_mimcSpongeContract;
 
-export {default as buildPedersenHash} from "./src/pedersenhash.js";
+export { default as buildPedersenHash } from "./src/pedersenHash.js";
 
 export {default as buildPoseidon} from "./src/poseidon.js";
 import * as _poseidonContract  from "./src/poseidon_gencontract.js";

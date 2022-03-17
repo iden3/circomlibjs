@@ -1,5 +1,5 @@
 import { Scalar, getCurveFromName } from "ffjavascript";
-import ethers from "ethers";
+import { ethers } from "ethers";
 
 const SEED = "mimcsponge";
 const NROUNDS = 220;
