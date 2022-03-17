@@ -2,7 +2,7 @@
 // License: LGPL-3.0+
 //
 
-import ethers from "ethers";
+import { ethers } from "ethers";
 
 import Contract from "./evmasm.js";
 

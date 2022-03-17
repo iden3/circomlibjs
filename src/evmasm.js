@@ -2,8 +2,7 @@
 // License: LGPL-3.0+
 //
 
-
-import ethers from "ethers";
+import { ethers } from "ethers";
 import {Scalar} from "ffjavascript";
 
 export default class Contract {

@@ -1,6 +1,6 @@
 import { Scalar } from "ffjavascript";
 import buildBabyJub from "./babyjub.js";
-import buildPedersenHash from "./pedersenhash.js";
+import buildPedersenHash from "./pedersenHash.js";
 import buildMimc7 from "./mimc7.js";
 import buildPoseidon from "./poseidon.js";
 import buildMimcSponge from "./mimcsponge.js";

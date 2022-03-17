@@ -1,6 +1,6 @@
 import chai from "chai";
 import {createCode, abi} from "../src/mimc7_gencontract.js";
-import ethers from "ethers";
+import { ethers } from "ethers";
 import ganache from "ganache-cli";
 
 import buildMimc7 from "../src/mimc7.js";
