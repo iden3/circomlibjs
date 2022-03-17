@@ -5,7 +5,7 @@
 import Contract from "./evmasm.js";
 import { utils } from "ffjavascript";
 const { unstringifyBigInts } = utils;
-import ethers from "ethers";
+import { ethers } from "ethers";
 
 import poseidonConstants from "./poseidon_constants.js";
 

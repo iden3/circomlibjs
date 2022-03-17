@@ -12,7 +12,6 @@ function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'defau
 
 var blake2b__default = /*#__PURE__*/_interopDefaultLegacy(blake2b);
 var createBlakeHash__default = /*#__PURE__*/_interopDefaultLegacy(createBlakeHash);
-var ethers__default = /*#__PURE__*/_interopDefaultLegacy(ethers);
 var assert__default = /*#__PURE__*/_interopDefaultLegacy(assert);
 
 async function buildBabyJub() {
@@ -294,7 +293,7 @@ class Mimc7 {
     getIV(seed) {
         const F = this.F;
         if (typeof seed === "undefined") seed = SEED$1;
-        const c = ethers__default["default"].utils.keccak256(ethers__default["default"].utils.toUtf8Bytes(seed+"_iv"));
+        const c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed+"_iv"));
         const cn = ffjavascript.Scalar.e(c);
         const iv = ffjavascript.Scalar.mod(cn, F.p);
         return iv;
@@ -304,9 +303,9 @@ class Mimc7 {
         const F = this.F;
         if (typeof nRounds === "undefined") nRounds = NROUNDS$1;
         const cts = new Array(nRounds);
-        let c = ethers__default["default"].utils.keccak256(ethers__default["default"].utils.toUtf8Bytes(SEED$1));
+        let c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(SEED$1));
         for (let i=1; i<nRounds; i++) {
-            c = ethers__default["default"].utils.keccak256(c);
+            c = ethers.ethers.utils.keccak256(c);
 
             cts[i] = F.e(c);
         }
@@ -25561,7 +25560,7 @@ class MimcSponge {
     getIV (seed)  {
         const F = this.F;
         if (typeof seed === "undefined") seed = SEED;
-        const c = ethers__default["default"].utils.keccak256(ethers__default["default"].utils.toUtf8Bytes(seed+"_iv"));
+        const c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed+"_iv"));
         const cn = ffjavascript.Scalar.e(c);
         const iv = cn.mod(F.p);
         return iv;
@@ -25571,8 +25570,8 @@ class MimcSponge {
         const F = this.F;
         if (typeof nRounds === "undefined") nRounds = NROUNDS;
         const cts = new Array(nRounds);
-        let c = ethers__default["default"].utils.keccak256(ethers__default["default"].utils.toUtf8Bytes(SEED));        for (let i=1; i<nRounds; i++) {
-            c = ethers__default["default"].utils.keccak256(c);
+        let c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(SEED));        for (let i=1; i<nRounds; i++) {
+            c = ethers.ethers.utils.keccak256(c);
 
             cts[i] = F.e(c);
         }
@@ -25951,7 +25950,7 @@ class Contract {
             genLoadedLength = C.code.length;
         }
 
-        return ethers__default["default"].utils.hexlify(C.code.concat(this.code));
+        return ethers.ethers.utils.hexlify(C.code.concat(this.code));
     }
 
     stop() { this.code.push(0x00); }
@@ -26077,7 +26076,7 @@ class Contract {
             S = "0x" +S;
             data = S;
         }
-        const d = ethers__default["default"].utils.arrayify(data);
+        const d = ethers.ethers.utils.arrayify(data);
         if (d.length == 0 || d.length > 32) {
             throw new Error("Assertion failed");
         }
@@ -26123,7 +26122,7 @@ class Contract {
 
 function createCode$2(seed, n) {
 
-    let ci = ethers__default["default"].utils.keccak256(ethers__default["default"].utils.toUtf8Bytes(seed));
+    let ci = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed));
     const C = new Contract();
 
     C.push(0x44);
@@ -26165,7 +26164,7 @@ function createCode$2(seed, n) {
     C.mulmod();         // r=t^7 k q
 
     for (let i=0; i<n-1; i++) {
-        ci = ethers__default["default"].utils.keccak256(ci);
+        ci = ethers.ethers.utils.keccak256(ci);
         C.dup(2);       // q r k q
         C.dup(0);       // q q r k q
         C.dup(0);       // q q q r k q
@@ -26233,7 +26232,7 @@ var _mimc7Contract = /*#__PURE__*/Object.freeze({
 
 function createCode$1(seed, n) {
 
-    let ci = ethers__default["default"].utils.keccak256(ethers__default["default"].utils.toUtf8Bytes(seed));
+    let ci = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed));
 
     const C = new Contract();
 
@@ -26276,7 +26275,7 @@ function createCode$1(seed, n) {
 
     for (let i=0; i<n-1; i++) {
         if (i < n-2) {
-          ci = ethers__default["default"].utils.keccak256(ci);
+          ci = ethers.ethers.utils.keccak256(ci);
         } else {
           ci = "0x00";
         }
@@ -26659,10 +26658,10 @@ function createCode(nInputs) {
     C.calldataload();
     C.div();
     C.dup(0);
-    C.push(ethers__default["default"].utils.keccak256(ethers__default["default"].utils.toUtf8Bytes(`poseidon(uint256[${nInputs}])`)).slice(0, 10)); // poseidon(uint256[n])
+    C.push(ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(`poseidon(uint256[${nInputs}])`)).slice(0, 10)); // poseidon(uint256[n])
     C.eq();
     C.swap(1);
-    C.push(ethers__default["default"].utils.keccak256(ethers__default["default"].utils.toUtf8Bytes(`poseidon(bytes32[${nInputs}])`)).slice(0, 10)); // poseidon(bytes32[n])
+    C.push(ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(`poseidon(bytes32[${nInputs}])`)).slice(0, 10)); // poseidon(bytes32[n])
     C.eq();
     C.or();
     C.jmpi("start");
