@@ -37,4 +37,17 @@ describe("Poseidon test", function () {
         const res3 = poseidonWasm([1,2,3,4]);
         assert(poseidonWasm.F.eq(poseidonWasm.F.e("0x299c867db6c1fdd79dcefa40e4510b9837e60ebb1ce0663dbaa525df65250465"), res3));
     });
+    it("Should check state and nOuts", async () => {
+        const F = poseidonWasm.F;
+        const inp = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
+        const st = 0;
+        const nOut = 17;
+        const res1 = poseidonReference(inp, st, nOut);
+        const res2 = poseidonOpt(inp, st, nOut);
+        const res3 = poseidonWasm(inp, st, nOut);
+        for (let i=0; i<nOut; i++) {
+            assert(F.eq(res1[i], res2[i]));
+            assert(F.eq(res2[i], res3[i]));
+        }
+    });
 });

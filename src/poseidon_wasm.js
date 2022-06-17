@@ -8,10 +8,11 @@ export default async function buildPoseidon() {
 
     const F = bn128.Fr;
 
+    const pState = bn128.tm.alloc(32);
     const pIn = bn128.tm.alloc(32*16);
-    const pOut = bn128.tm.alloc(32);
+    const pOut = bn128.tm.alloc(32*17);
 
-    const poseidon = (arr) => {
+    const poseidon = (arr, state, nOut) => {
         let buff;
         let n;
         if (Array.isArray(arr)) {
@@ -23,10 +24,28 @@ export default async function buildPoseidon() {
             n = buff.byteLength / 32;
             if (n*32 != buff.byteLength) throw new Error("Invalid iput buff size");
         }
-        if ((n<1)||(n>16)) throw new Error("Invalid poseidon size");
         bn128.tm.setBuff(pIn, buff);
-        bn128.tm.instance.exports.poseidon(pIn, n, pOut);
-        return bn128.tm.getBuff(pOut, 32);
+
+        if ((n<1)||(n>16)) throw new Error("Invalid poseidon size");
+
+        if (typeof state == "undefined") {
+            state = F.zero;
+        } else {
+            state = F.e(state);
+        }
+        bn128.tm.setBuff(pState, state);
+        nOut ||= 1;
+
+        bn128.tm.instance.exports.poseidon(pState, pIn, n, pOut, nOut);
+        if (nOut == 1) {
+            return bn128.tm.getBuff(pOut, 32);
+        } else {
+            const out = [];
+            for (let i=0; i<nOut; i++) {
+                out.push(bn128.tm.getBuff(pOut+i*32, 32));
+            }
+            return out
+        }
     }
 
     poseidon.F = F;
@@ -80,7 +99,7 @@ function buildPoseidonWasm(module) {
         buffIdx32[i*5 + 4]  = module.alloc(buffP);
     }
 
-    const pConstants = module.alloc(buffIdx); 
+    const pConstants = module.alloc(buffIdx);
     const pState = module.alloc(32*((NSizes+1)*32));
 
     function buildAddConstant() {
@@ -273,9 +292,11 @@ function buildPoseidonWasm(module) {
 
     function buildPoseidon() {
         const f = module.addFunction("poseidon");
+        f.addParam("pInitState", "i32");
         f.addParam("pIn", "i32");
         f.addParam("n", "i32");
         f.addParam("pOut", "i32");
+        f.addParam("nOut", "i32");
         f.addLocal("pC", "i32");
         f.addLocal("pS", "i32");
         f.addLocal("pM", "i32");
@@ -295,8 +316,8 @@ function buildPoseidonWasm(module) {
             c.setLocal(
                 "pAux",
                 c.i32_add(
-                    c.i32_const(pConstants), 
-                    c.i32_mul( 
+                    c.i32_const(pConstants),
+                    c.i32_mul(
                         c.i32_sub(c.getLocal("n"), c.i32_const(1)),
                         c.i32_const(20)
                     )
@@ -325,16 +346,21 @@ function buildPoseidonWasm(module) {
 
             // Initialize state
             c.call("frm_zero", c.i32_const(pState)),
+            c.call(
+                "frm_copy",
+                c.getLocal("pInitState"),
+                c.i32_const(pState),
+            ),
             c.setLocal("i", c.i32_const(1)),
             c.block(c.loop(
                 c.call(
-                    "frm_copy", 
+                    "frm_copy",
                     c.i32_add(
-                        c.getLocal("pIn"), 
+                        c.getLocal("pIn"),
                         c.i32_mul(c.i32_sub(c.getLocal("i"), c.i32_const(1)), c.i32_const(32))
                     ),
                     c.i32_add(
-                        c.i32_const(pState), 
+                        c.i32_const(pState),
                         c.i32_mul(c.getLocal("i"), c.i32_const(32))
                     )
                 ),
@@ -383,7 +409,23 @@ function buildPoseidonWasm(module) {
             c.call("poseidon_power5all", c.getLocal("t")),
             c.call("poseidon_applyMatrix", c.getLocal("t"), c.getLocal("pM")),
 
-            c.call("frm_copy", c.i32_const(pState), c.getLocal("pOut"))
+            c.setLocal("i", c.i32_const(0)),
+            c.block(c.loop(
+                c.br_if(1, c.i32_eq ( c.getLocal("i"), c.getLocal("nOut") )),
+                c.call("frm_copy",
+                    c.i32_add(
+                        c.i32_const(pState),
+                        c.i32_mul(c.getLocal("i"), c.i32_const(32))
+                    ),
+                    c.i32_add(
+                        c.getLocal("pOut"),
+                        c.i32_mul(c.getLocal("i"), c.i32_const(32))
+                    )
+                ),
+                c.setLocal("i", c.i32_add(c.getLocal("i"), c.i32_const(1))),
+                c.br(0)
+            )),
+
         );
     }
 

@@ -44,9 +44,17 @@ export default async function buildPoseidon() {
 
     const pow5 = a => F.mul(a, F.square(F.square(a, a)));
 
-    function poseidon(inputs) {
+    function poseidon(inputs, initState, nOut) {
         assert(inputs.length > 0);
         assert(inputs.length <= N_ROUNDS_P.length);
+
+        if (initState) {
+            initState = F.e(initState);
+        } else {
+            initState = F.zero;
+        }
+        nOut ||= 1;
+
 
         const t = inputs.length + 1;
         const nRoundsF = N_ROUNDS_F;
@@ -56,7 +64,7 @@ export default async function buildPoseidon() {
         const M = opt.M[t-2];
         const P = opt.P[t-2];
 
-        let state = [F.zero, ...inputs.map(a => F.e(a))];
+        let state = [initState, ...inputs.map(a => F.e(a))];
 
         state = state.map((a, i) => F.add(a, C[i]));
 
@@ -97,7 +105,11 @@ export default async function buildPoseidon() {
             state.reduce((acc, a, j) => F.add(acc, F.mul(M[j][i], a)), F.zero)
         );
 
-        return state[0];
+        if (nOut == 1) {
+            return state[0]
+        } else {
+            return state.slice(0, nOut);
+        }
     }
 
     poseidon.F = F;
