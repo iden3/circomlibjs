@@ -54,7 +54,7 @@ export default async function buildPoseidon() {
         } else {
             initState = F.zero;
         }
-        nOut ||= 1;
+        nOut = nOut || 1;
 
         let state = [initState, ...inputs.map(a => F.e(a))];
         for (let r = 0; r < nRoundsF + nRoundsP; r++) {

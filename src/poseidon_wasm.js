@@ -34,7 +34,7 @@ export default async function buildPoseidon() {
             state = F.e(state);
         }
         bn128.tm.setBuff(pState, state);
-        nOut ||= 1;
+        nOut = nOut || 1;
 
         bn128.tm.instance.exports.poseidon(pState, pIn, n, pOut, nOut);
         if (nOut == 1) {

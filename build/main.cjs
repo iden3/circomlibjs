@@ -25187,7 +25187,7 @@ async function buildPoseidon$2() {
             state = F.e(state);
         }
         bn128.tm.setBuff(pState, state);
-        nOut ||= 1;
+        nOut = nOut || 1;
 
         bn128.tm.instance.exports.poseidon(pState, pIn, n, pOut, nOut);
         if (nOut == 1) {
@@ -26857,7 +26857,7 @@ async function buildPoseidon$1() {
         } else {
             initState = F.zero;
         }
-        nOut ||= 1;
+        nOut = nOut || 1;
 
         let state = [initState, ...inputs.map(a => F.e(a))];
         for (let r = 0; r < nRoundsF + nRoundsP; r++) {
@@ -26927,7 +26927,7 @@ async function buildPoseidon() {
         } else {
             initState = F.zero;
         }
-        nOut ||= 1;
+        nOut = nOut || 1;
 
 
         const t = inputs.length + 1;
