@@ -1,6 +1,6 @@
 import chai from "chai";
 import {createCode, generateABI} from "../src/poseidon_gencontract.js";
-import buildPoseidon from "../src/poseidon_wasm.js";
+import { buildPoseidon } from "../src/poseidon_wasm.js";
 import { ethers } from "ethers";
 import ganache from "ganache";
 

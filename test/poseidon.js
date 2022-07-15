@@ -2,7 +2,7 @@ import chai from "chai";
 const assert = chai.assert;
 
 import buildPoseidonOpt from "../src/poseidon_opt.js";
-import buildPoseidonWasm from "../src/poseidon_wasm.js";
+import {buildPoseidon as buildPoseidonWasm } from "../src/poseidon_wasm.js";
 import buildPoseidonReference from "../src/poseidon_reference.js";
 
 describe("Poseidon test", function () {
