@@ -12,7 +12,7 @@ export const mimcSpongecontract=_mimcSpongeContract;
 
 export {default as buildPedersenHash} from "./src/pedersen_hash.js";
 
-export {default as buildPoseidon} from "./src/poseidon_wasm.js";
+export { buildPoseidon, buildPoseidonWasm } from "./src/poseidon_wasm.js";
 import * as _poseidonContract  from "./src/poseidon_gencontract.js";
 export const poseidonContract=_poseidonContract;
 

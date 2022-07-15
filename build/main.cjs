@@ -27381,6 +27381,7 @@ exports.buildPedersenHash = buildPedersenHash;
 exports.buildPoseidon = buildPoseidon$2;
 exports.buildPoseidonOpt = buildPoseidon;
 exports.buildPoseidonReference = buildPoseidon$1;
+exports.buildPoseidonWasm = buildPoseidonWasm;
 exports.buildSMT = buildSMT;
 exports.evmasm = Contract;
 exports.mimc7Contract = mimc7Contract;

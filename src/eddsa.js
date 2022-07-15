@@ -2,7 +2,7 @@ import { Scalar } from "ffjavascript";
 import buildBabyJub from "./babyjub.js";
 import buildPedersenHash from "./pedersen_hash.js";
 import buildMimc7 from "./mimc7.js";
-import buildPoseidon from "./poseidon_wasm.js";
+import { buildPoseidon } from "./poseidon_wasm.js";
 import buildMimcSponge from "./mimcsponge.js";
 import createBlakeHash from "blake-hash";
 

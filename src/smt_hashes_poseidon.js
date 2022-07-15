@@ -1,4 +1,4 @@
-import buildPoseidon from "./poseidon_wasm.js";
+import { buildPoseidon } from "./poseidon_wasm.js";
 import { getCurveFromName }  from "ffjavascript";
 
 
