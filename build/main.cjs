@@ -26136,7 +26136,7 @@ class Contract {
     }
 
     swap(n) {
-        if (n < 1 || n >= 16) {
+        if (n < 1 || n > 16) {
             throw new Error("Assertion failed");
         }
         this.code.push(0x8f + n);
