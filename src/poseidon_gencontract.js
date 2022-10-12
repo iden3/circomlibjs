@@ -12,7 +12,7 @@ import poseidonConstants from "./poseidon_constants.js";
 const { C:K, M } = unstringifyBigInts(poseidonConstants);
 
 const N_ROUNDS_F = 8;
-const N_ROUNDS_P = [56, 57, 56, 60, 60, 63, 64, 63];
+const N_ROUNDS_P = [56, 57, 56, 60, 60, 63];
 
 function toHex256(a) {
     let S = a.toString(16);
@@ -22,7 +22,7 @@ function toHex256(a) {
 
 export function createCode(nInputs) {
 
-    if (( nInputs<1) || (nInputs>8)) throw new Error("Invalid number of inputs. Must be 1<=nInputs<=8");
+    if (( nInputs<1) || (nInputs>6)) throw new Error("Invalid number of inputs. Must be 1<=nInputs<=6");
     const t = nInputs + 1;
     const nRoundsF = N_ROUNDS_F;
     const nRoundsP = N_ROUNDS_P[t - 2];
