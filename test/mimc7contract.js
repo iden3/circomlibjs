@@ -1,6 +1,7 @@
 import chai from "chai";
 import {createCode, abi} from "../src/mimc7_gencontract.js";
-import { ethers } from "ethers";
+import {Web3Provider} from "@ethersproject/providers";
+import {ContractFactory} from "@ethersproject/contracts";
 import ganache from "ganache";
 
 import buildMimc7 from "../src/mimc7.js";
@@ -18,7 +19,7 @@ describe("MiMC Smart contract test", function () {
     this.timeout(100000);
 
     before(async () => {
-        const provider = new ethers.providers.Web3Provider(ganache.provider());
+        const provider = new Web3Provider(ganache.provider());
 
         account = provider.getSigner(0);
         mimcJS = await buildMimc7();
@@ -27,7 +28,7 @@ describe("MiMC Smart contract test", function () {
     it("Should deploy the contract", async () => {
 
 
-        const C = new ethers.ContractFactory(
+        const C = new ContractFactory(
             abi,
             createCode(SEED, 91),
             account

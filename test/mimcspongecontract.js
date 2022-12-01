@@ -1,6 +1,7 @@
 import chai from "chai";
 import {createCode, abi} from "../src/mimcsponge_gencontract.js";
-import { ethers } from "ethers";
+import {Web3Provider} from "@ethersproject/providers";
+import {ContractFactory} from "@ethersproject/contracts";
 import ganache from "ganache";
 
 import buildMimcSponge from "../src/mimcsponge.js";
@@ -17,7 +18,7 @@ describe("MiMC Sponge Smart contract test", () => {
     let account;
 
     before(async () => {
-        const provider = new ethers.providers.Web3Provider(ganache.provider());
+        const provider = new Web3Provider(ganache.provider());
 
         account = provider.getSigner(0);
         mimcJS = await buildMimcSponge();
@@ -26,7 +27,7 @@ describe("MiMC Sponge Smart contract test", () => {
     it("Should deploy the contract", async () => {
 
 
-        const C = new ethers.ContractFactory(
+        const C = new ContractFactory(
             abi,
             createCode(SEED, 220),
             account

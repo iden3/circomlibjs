@@ -1,7 +1,8 @@
 import chai from "chai";
 import {createCode, generateABI} from "../src/poseidon_gencontract.js";
 import { buildPoseidon } from "../src/poseidon_wasm.js";
-import { ethers } from "ethers";
+import {Web3Provider} from "@ethersproject/providers";
+import {ContractFactory} from "@ethersproject/contracts";
 import ganache from "ganache";
 
 const assert = chai.assert;
@@ -17,19 +18,19 @@ describe("Poseidon Smart contract test", function () {
     this.timeout(100000);
 
     before(async () => {
-        const provider = new ethers.providers.Web3Provider(ganache.provider());
+        const provider = new Web3Provider(ganache.provider());
 
         account = provider.getSigner(0);
         poseidon = await buildPoseidon();
     });
 
     it("Should deploy the contract", async () => {
-        const C6 = new ethers.ContractFactory(
+        const C6 = new ContractFactory(
             generateABI(5),
             createCode(5),
             account
           );
-        const C3 = new ethers.ContractFactory(
+        const C3 = new ContractFactory(
             generateABI(2),
             createCode(2),
             account
