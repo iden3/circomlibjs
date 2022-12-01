@@ -1,5 +1,6 @@
 import { Scalar, getCurveFromName } from "ffjavascript";
-import { ethers } from "ethers";
+import {keccak256} from "@ethersproject/keccak256";
+import {toUtf8Bytes} from "@ethersproject/strings";
 
 const SEED = "mimcsponge";
 const NROUNDS = 220;
@@ -18,7 +19,7 @@ class MimcSponge {
     getIV (seed)  {
         const F = this.F;
         if (typeof seed === "undefined") seed = SEED;
-        const c = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(seed+"_iv"));
+        const c = keccak256(toUtf8Bytes(seed+"_iv"));
         const cn = Scalar.e(c);
         const iv = cn.mod(F.p);
         return iv;
@@ -29,9 +30,9 @@ class MimcSponge {
         if (typeof seed === "undefined") seed = SEED;
         if (typeof nRounds === "undefined") nRounds = NROUNDS;
         const cts = new Array(nRounds);
-        let c = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(SEED));;
+        let c = keccak256(toUtf8Bytes(SEED));;
         for (let i=1; i<nRounds; i++) {
-            c = ethers.utils.keccak256(c);
+            c = keccak256(c);
 
             cts[i] = F.e(c);
         }

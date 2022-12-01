@@ -5,7 +5,8 @@
 import Contract from "./evmasm.js";
 import { utils } from "ffjavascript";
 const { unstringifyBigInts } = utils;
-import { ethers } from "ethers";
+import {keccak256} from "@ethersproject/keccak256";
+import {toUtf8Bytes} from "@ethersproject/strings";
 
 import poseidonConstants from "./poseidon_constants.js";
 
@@ -104,10 +105,10 @@ export function createCode(nInputs) {
     C.calldataload();
     C.div();
     C.dup(0);
-    C.push(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`poseidon(uint256[${nInputs}])`)).slice(0, 10)); // poseidon(uint256[n])
+    C.push(keccak256(toUtf8Bytes(`poseidon(uint256[${nInputs}])`)).slice(0, 10)); // poseidon(uint256[n])
     C.eq();
     C.swap(1);
-    C.push(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`poseidon(bytes32[${nInputs}])`)).slice(0, 10)); // poseidon(bytes32[n])
+    C.push(keccak256(toUtf8Bytes(`poseidon(bytes32[${nInputs}])`)).slice(0, 10)); // poseidon(bytes32[n])
     C.eq();
     C.or();
     C.jmpi("start");
