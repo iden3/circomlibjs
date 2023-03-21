@@ -9,20 +9,22 @@ import { ethers } from "ethers";
 
 import poseidonConstants from "./poseidon_constants.js";
 
-const { C:K, M } = unstringifyBigInts(poseidonConstants);
+
+// ONLY for Poseidon3 per starkwares implementation/configs https://github.com/starkware-industries/poseidon
+const { C: K, M } = unstringifyBigInts(poseidonConstants);
 
 const N_ROUNDS_F = 8;
-const N_ROUNDS_P = [56, 57, 56, 60, 60, 63, 64, 63];
+const N_ROUNDS_P = [56, 83, 56, 60, 60, 63, 64, 63];
 
 function toHex256(a) {
     let S = a.toString(16);
-    while (S.length < 64) S="0"+S;
+    while (S.length < 64) S = "0" + S;
     return "0x" + S;
 }
 
 export function createCode(nInputs) {
 
-    if (( nInputs<1) || (nInputs>8)) throw new Error("Invalid number of inputs. Must be 1<=nInputs<=8");
+    if ((nInputs != 2)) throw new Error("Invalid number of inputs. Must be 2");
     const t = nInputs + 1;
     const nRoundsF = N_ROUNDS_F;
     const nRoundsP = N_ROUNDS_P[t - 2];
@@ -30,20 +32,20 @@ export function createCode(nInputs) {
     const C = new Contract();
 
     function saveM() {
-        for (let i=0; i<t; i++) {
-            for (let j=0; j<t; j++) {
-                C.push(toHex256(M[t-2][i][j]));
-                C.push((1+i*t+j)*32);
+        for (let i = 0; i < t; i++) {
+            for (let j = 0; j < t; j++) {
+                C.push(toHex256(M[t - 2][i][j]));
+                C.push((1 + i * t + j) * 32);
                 C.mstore();
             }
         }
     }
 
     function ark(r) {   // st, q
-        for (let i=0; i<t; i++) {
+        for (let i = 0; i < t; i++) {
             C.dup(t); // q, st, q
-            C.push(toHex256(K[t-2][r*t+i]));  // K, q, st, q
-            C.dup(2+i); // st[i], K, q, st, q
+            C.push(toHex256(K[t - 2][r * t + i]));  // K, q, st, q
+            C.dup(2 + i); // st[i], K, q, st, q
             C.addmod(); // newSt[i], st, q
             C.swap(1 + i); // xx, st, q
             C.pop();
@@ -51,45 +53,42 @@ export function createCode(nInputs) {
     }
 
     function sigma(p) {
-        // sq, q
+        // st, q
         C.dup(t);   // q, st, q
-        C.dup(1+p); // st[p] , q , st, q
+        C.dup(1 + p); // st[p] , q , st, q
         C.dup(1);   // q, st[p] , q , st, q
-        C.dup(0);   // q, q, st[p] , q , st, q
-        C.dup(2);   // st[p] , q, q, st[p] , q , st, q
-        C.dup(0);   // st[p] , st[p] , q, q, st[p] , q , st, q
-        C.mulmod(); // st2[p], q, st[p] , q , st, q
-        C.dup(0);   // st2[p], st2[p], q, st[p] , q , st, q
-        C.mulmod(); // st4[p], st[p] , q , st, q
-        C.mulmod(); // st5[p], st, q
-        C.swap(1+p);
+        C.dup(1);   // st[p] , q, st[p] , q , st, q
+        C.dup(0);   // st[p] , st[p] , q,    st[p] , q , st, q
+        C.mulmod(); // st2[p], st[p] , q , st, q
+        C.mulmod(); // st3[p], st, q
+        C.swap(1 + p);
         C.pop();      // newst, q
     }
 
     function mix() {
         C.label("mix");
-        for (let i=0; i<t; i++) {
-            for (let j=0; j<t; j++) {
-                if (j==0) {
-                    C.dup(i+t);      // q, newSt, oldSt, q
-                    C.push((1+i*t+j)*32);
+        for (let i = 0; i < t; i++) {
+            for (let j = 0; j < t; j++) {
+                if (j == 0) {
+                    C.dup(i + t);      // q, newSt, oldSt, q
+                    C.push((1 + i * t + j) * 32);
                     C.mload();      // M, q, newSt, oldSt, q
-                    C.dup(2+i+j);    // oldSt[j], M, q, newSt, oldSt, q
+                    C.dup(2 + i + j);    // oldSt[j], M, q, newSt, oldSt, q
                     C.mulmod();      // acc, newSt, oldSt, q
                 } else {
-                    C.dup(1+i+t);    // q, acc, newSt, oldSt, q
-                    C.push((1+i*t+j)*32);
+                    C.dup(1 + i + t);    // q, acc, newSt, oldSt, q
+                    C.push((1 + i * t + j) * 32);
                     C.mload();      // M, q, acc, newSt, oldSt, q
-                    C.dup(3+i+j);    // oldSt[j], M, q, acc, newSt, oldSt, q
+                    C.dup(3 + i + j);    // oldSt[j], M, q, acc, newSt, oldSt, q
                     C.mulmod();      // aux, acc, newSt, oldSt, q
-                    C.dup(2+i+t);    // q, aux, acc, newSt, oldSt, q
+                    C.dup(2 + i + t);    // q, aux, acc, newSt, oldSt, q
                     C.swap(2);       // acc, aux, q, newSt, oldSt, q
                     C.addmod();      // acc, newSt, oldSt, q
                 }
             }
         }
-        for (let i=0; i<t; i++) {
-            C.swap((t -i) + (t -i-1));
+        for (let i = 0; i < t; i++) {
+            C.swap((t - i) + (t - i - 1));
             C.pop();
         }
         C.push(0);
@@ -117,29 +116,29 @@ export function createCode(nInputs) {
 
     saveM();
 
-    C.push("0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001");  // q
+    C.push("0x0800000000000011000000000000000000000000000000000000000000000001");  // q
 
     // Load t values from the call data.
     // The function has a single array param param
     // [Selector (4)] [item1 (32)] [item2 (32)] ....
     // Stack positions 0-nInputs.
-    for (let i=0; i<nInputs; i++) {
-        C.push(0x04+(0x20*(nInputs-i-1)));
+    C.push(2); // per starkwares implementation ->    https://github.com/starkware-libs/cairo-lang/blob/12ca9e91bbdc8a423c63280949c7e34382792067/src/starkware/cairo/common/poseidon_hash.py#L31
+    for (let i = 0; i < nInputs; i++) {
+        C.push(0x04 + (0x20 * (nInputs - i - 1)));
         C.calldataload();
     }
 
-    C.push(0);
 
-    for (let i=0; i<nRoundsF+nRoundsP; i++) {
+    for (let i = 0; i < nRoundsF + nRoundsP; i++) {
         ark(i);
-        if ((i<nRoundsF/2) || (i>=nRoundsP+nRoundsF/2)) {
-            for (let j=0; j<t; j++) {
+        if ((i < nRoundsF / 2) || (i >= nRoundsP + nRoundsF / 2)) {
+            for (let j = 0; j < t; j++) {
                 sigma(j);
             }
         } else {
-            sigma(0);
+            sigma(2);
         }
-        const strLabel = "aferMix"+i;
+        const strLabel = "aferMix" + i;
         C._pushLabel(strLabel);
         C.push(0);
         C.mstore();
