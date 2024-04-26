@@ -50,4 +50,59 @@ describe("Poseidon test", function () {
             assert(F.eq(res2[i], res3[i]));
         }
     });
+    it("Should check poseidon with 16 inputs", async () => {
+        const testvectors = [
+            {
+                inputs: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],
+                expected: "9989051620750914585850546081941653841776809718687451684622678807385399211877"
+            },
+            {
+                inputs: [1,2,3,4,5,6,7,8,9,0,0,0,0,0,0,0],
+                expected: "11882816200654282475720830292386643970958445617880627439994635298904836126497"
+            },
+        ];
+
+        for (let i=0; i<testvectors.length; i++) {
+            const res1 = poseidonReference(testvectors[i].inputs);
+            assert(poseidonReference.F.eq(poseidonReference.F.e(testvectors[i].expected), res1));
+
+            const res2 = poseidonOpt(testvectors[i].inputs);
+            assert(poseidonOpt.F.eq(poseidonOpt.F.e(testvectors[i].expected), res2));
+
+            const res3 = poseidonWasm(testvectors[i].inputs);
+            assert(poseidonWasm.F.eq(poseidonWasm.F.e(testvectors[i].expected), res3));
+        }
+    });
+
+    it("Should check poseidon with init state", async () => {
+
+        const testvectors = [
+            {
+                inputs: [1,2,3,4,5,6],
+                initState: 0,
+                expected: "20400040500897583745843009878988256314335038853985262692600694741116813247201"
+            },
+            {
+                inputs: [1,2,3,4],
+                initState: 7,
+                expected: "1569211601569591254857354699102545060324851338714426496554851741114291465006"
+            },
+            {
+                inputs: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],
+                initState: 17,
+                expected: "7865037705064445207187340054656830232157001572238023180016026650118519857086"
+            },
+        ];
+
+        for (let i=0; i<testvectors.length; i++) {
+            const res1 = poseidonReference(testvectors[i].inputs, testvectors[i].initState);
+            assert(poseidonReference.F.eq(poseidonReference.F.e(testvectors[i].expected), res1));
+
+            const res2 = poseidonOpt(testvectors[i].inputs, testvectors[i].initState);
+            assert(poseidonOpt.F.eq(poseidonOpt.F.e(testvectors[i].expected), res2));
+
+            const res3 = poseidonWasm(testvectors[i].inputs, testvectors[i].initState);
+            assert(poseidonWasm.F.eq(poseidonWasm.F.e(testvectors[i].expected), res3));
+        }
+    });
 });
