@@ -12,19 +12,19 @@ import { getCurveFromName }  from "ffjavascript";
 
 import poseidonConstants from "./poseidon_constants_opt.js";
 
-function unsringifyConstants(Fr, o) {
+function unstringifyConstants(Fr, o) {
     if ((typeof(o) == "string") && (/^[0-9]+$/.test(o) ))  {
         return Fr.e(o);
     } else if ((typeof(o) == "string") && (/^0x[0-9a-fA-F]+$/.test(o) ))  {
         return Fr.e(o);
     } else if (Array.isArray(o)) {
-        return o.map(unsringifyConstants.bind(null, Fr));
+        return o.map(unstringifyConstants.bind(null, Fr));
     } else if (typeof o == "object") {
         if (o===null) return null;
         const res = {};
         const keys = Object.keys(o);
         keys.forEach( (k) => {
-            res[k] = unsringifyConstants(Fr, o[k]);
+            res[k] = unstringifyConstants(Fr, o[k]);
         });
         return res;
     } else {
@@ -37,7 +37,7 @@ export default async function buildPoseidon() {
 
     const F = bn128.Fr;
 
-    const opt = unsringifyConstants(F, poseidonConstants);
+    const opt = unstringifyConstants(F, poseidonConstants);
 
     const N_ROUNDS_F = 8;
     const N_ROUNDS_P = [56, 57, 56, 60, 60, 63, 64, 63, 60, 66, 60, 65, 70, 60, 64, 68];
