@@ -1,4 +1,4 @@
-import buildPedersenHash from "./pedersenhash.js";
+import buildPedersenHash from "./pedersen_hash.js";
 
 async function run() {
     const pedersenHash = await buildPedersenHash();
@@ -17,15 +17,15 @@ async function run() {
         baseHash = "blake";
     }
 
-    for (let i=0; i < nBases; i++) {
-        const p = pedersenHash.getBasePoint(i);
+    for (let i = 0; i < nBases; i++) {
+        const p = pedersenHash.getBasePoint(baseHash, i);
         console.log(`[${pedersenHash.babyJub.F.toString(p[0])},${pedersenHash.babyJub.F.toString(p[1])}]`);
     }
 
 
 }
 
-run().then(()=> {
+run().then(() => {
     process.exit(0);
 }, (err) => {
     console.log(err.stack);
