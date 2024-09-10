@@ -105,4 +105,24 @@ describe("Poseidon test", function () {
             assert(poseidonWasm.F.eq(poseidonWasm.F.e(testvectors[i].expected), res3));
         }
     });
+    it("Should check poseidon with init state2", async () => {
+
+        const transactionHash = poseidonOpt([1,2,3,4]);
+        console.log("expected: 0x299c867db6c1fdd79dcefa40e4510b9837e60ebb1ce0663dbaa525df65250465");
+        console.log(transactionHash);
+        // uncommenting the following line will cause transactionHash to be change
+        //console.log("toString: ", poseidonOpt.F.toString(transactionHash, 16));
+
+        //console.log(poseidonOpt.F);
+        //console.log("toString: ", poseidonOpt.F.toString(transactionHash, 16));
+        //console.log(transactionHash);
+        await poseidonOpt.F.toRprLE(transactionHash);
+        await poseidonOpt.F.toRprLE(transactionHash);
+        await poseidonOpt.F.toRprLE(transactionHash);
+        await poseidonOpt.F.toRprLE(transactionHash);
+        console.log(transactionHash);
+        console.log(poseidonOpt.F.toString(transactionHash, 16));
+        console.log(poseidonOpt.F.toString(transactionHash, 16));
+
+    });
 });
