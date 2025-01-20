@@ -1,10 +1,10 @@
+import { blake512 } from "@noble/hashes/blake1";
 import { Scalar } from "ffjavascript";
 import buildBabyJub from "./babyjub.js";
-import buildPedersenHash from "./pedersen_hash.js";
 import buildMimc7 from "./mimc7.js";
-import { buildPoseidon } from "./poseidon_wasm.js";
 import buildMimcSponge from "./mimcsponge.js";
-import createBlakeHash from "blake-hash";
+import buildPedersenHash from "./pedersen_hash.js";
+import { buildPoseidon } from "./poseidon_wasm.js";
 
 export default async function buildEddsa() {
     const babyJub = await buildBabyJub("bn128");
@@ -35,7 +35,7 @@ class Eddsa {
 
     prv2pub(prv) {
         const F = this.babyJub.F;
-        const sBuff = this.pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
+        const sBuff = this.pruneBuffer(blake512(Buffer.from(prv)));
         let s = Scalar.fromRprLE(sBuff, 0, 32);
         const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, Scalar.shr(s,3));
         return A;
@@ -43,14 +43,14 @@ class Eddsa {
 
     signPedersen(prv, msg) {
         const F = this.babyJub.F;
-        const sBuff = this.pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
+        const sBuff = this.pruneBuffer(blake512(Buffer.from(prv)));
         const s = Scalar.fromRprLE(sBuff, 0, 32);
         const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, Scalar.shr(s, 3));
 
         const composeBuff = new Uint8Array(32 + msg.length);
         composeBuff.set(sBuff.slice(32), 0);
         composeBuff.set(msg, 32);
-        const rBuff = createBlakeHash("blake512").update(Buffer.from(composeBuff)).digest();
+        const rBuff = blake512(Buffer.from(composeBuff));
         let r = Scalar.mod(Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
         const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
         const R8p = this.babyJub.packPoint(R8);
@@ -79,7 +79,7 @@ class Eddsa {
 
     signMiMC(prv, msg) {
         const F = this.babyJub.F;
-        const sBuff = this.pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
+        const sBuff = this.pruneBuffer(blake512(Buffer.from(prv)));
         const s = Scalar.fromRprLE(sBuff, 0, 32);
         const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, Scalar.shr(s, 3));
 
@@ -87,7 +87,7 @@ class Eddsa {
         const composeBuff = new Uint8Array(32 + msg.length);
         composeBuff.set(sBuff.slice(32), 0);
         F.toRprLE(composeBuff, 32, msg);
-        const rBuff = createBlakeHash("blake512").update(Buffer.from(composeBuff)).digest();
+        const rBuff = blake512(Buffer.from(composeBuff));
         let r = Scalar.mod(Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
         const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
 
@@ -108,14 +108,14 @@ class Eddsa {
 
     signMiMCSponge(prv, msg) {
         const F = this.babyJub.F;
-        const sBuff = this.pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
+        const sBuff = this.pruneBuffer(blake512(Buffer.from(prv)));
         const s = Scalar.fromRprLE(sBuff, 0, 32);
         const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, Scalar.shr(s, 3));
 
         const composeBuff = new Uint8Array(32 + msg.length);
         composeBuff.set(sBuff.slice(32), 0);
         F.toRprLE(composeBuff, 32, msg);
-        const rBuff = createBlakeHash("blake512").update(Buffer.from(composeBuff)).digest();
+        const rBuff = blake512(Buffer.from(composeBuff));
         let r = Scalar.mod(Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
         const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
 
@@ -136,14 +136,14 @@ class Eddsa {
 
     signPoseidon(prv, msg) {
         const F = this.babyJub.F;
-        const sBuff = this.pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
+        const sBuff = this.pruneBuffer(blake512(Buffer.from(prv)));
         const s = Scalar.fromRprLE(sBuff, 0, 32);
         const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, Scalar.shr(s, 3));
 
         const composeBuff = new Uint8Array(32 + msg.length);
         composeBuff.set(sBuff.slice(32), 0);
         F.toRprLE(composeBuff, 32, msg);
-        const rBuff = createBlakeHash("blake512").update(Buffer.from(composeBuff)).digest();
+        const rBuff = blake512(Buffer.from(composeBuff));
         let r = Scalar.mod(Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
         const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
 
