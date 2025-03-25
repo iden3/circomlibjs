@@ -8,7 +8,7 @@ import Contract from "./evmasm.js";
 
 export function createCode(seed, n) {
 
-    let ci = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(seed));
+    let ci = ethers.keccak256(ethers.toUtf8Bytes(seed));
 
     const C = new Contract();
 
@@ -51,7 +51,7 @@ export function createCode(seed, n) {
 
     for (let i=0; i<n-1; i++) {
         if (i < n-2) {
-          ci = ethers.utils.keccak256(ci);
+          ci = ethers.keccak256(ci);
         } else {
           ci = "0x00";
         }

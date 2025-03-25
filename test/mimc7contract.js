@@ -1,7 +1,7 @@
 import chai from "chai";
 import {createCode, abi} from "../src/mimc7_gencontract.js";
-import { ethers } from "ethers";
-import ganache from "ganache";
+import pkg from 'hardhat';
+const { ethers } = pkg;
 
 import buildMimc7 from "../src/mimc7.js";
 
@@ -18,9 +18,7 @@ describe("MiMC Smart contract test", function () {
     this.timeout(100000);
 
     before(async () => {
-        const provider = new ethers.providers.Web3Provider(ganache.provider());
-
-        account = provider.getSigner(0);
+        [account] = await ethers.getSigners();
         mimcJS = await buildMimc7();
     });
 

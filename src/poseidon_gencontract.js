@@ -104,10 +104,10 @@ export function createCode(nInputs) {
     C.calldataload();
     C.div();
     C.dup(0);
-    C.push(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`poseidon(uint256[${nInputs}])`)).slice(0, 10)); // poseidon(uint256[n])
+    C.push(ethers.keccak256(ethers.toUtf8Bytes(`poseidon(uint256[${nInputs}])`)).slice(0, 10)); // poseidon(uint256[n])
     C.eq();
     C.swap(1);
-    C.push(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`poseidon(bytes32[${nInputs}])`)).slice(0, 10)); // poseidon(bytes32[n])
+    C.push(ethers.keccak256(ethers.toUtf8Bytes(`poseidon(bytes32[${nInputs}])`)).slice(0, 10)); // poseidon(bytes32[n])
     C.eq();
     C.or();
     C.jmpi("start");

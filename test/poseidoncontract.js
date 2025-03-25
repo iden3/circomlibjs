@@ -1,8 +1,8 @@
 import chai from "chai";
 import {createCode, generateABI} from "../src/poseidon_gencontract.js";
 import { buildPoseidon } from "../src/poseidon_wasm.js";
-import { ethers } from "ethers";
-import ganache from "ganache";
+import pkg from 'hardhat';
+const { ethers } = pkg;
 
 const assert = chai.assert;
 const log = (msg) => { if (process.env.MOCHA_VERBOSE) console.log(msg); };
@@ -17,9 +17,7 @@ describe("Poseidon Smart contract test", function () {
     this.timeout(100000);
 
     before(async () => {
-        const provider = new ethers.providers.Web3Provider(ganache.provider());
-
-        account = provider.getSigner(0);
+        [account] = await ethers.getSigners();
         poseidon = await buildPoseidon();
     });
 
