@@ -10,6 +10,8 @@ export default {
         format: "cjs",
     },
     external: [
+        "@noble/hashes/blake1",
+        "@noble/hashes/blake2b",
         ...Object.keys(pkg.dependencies),
         ...builtin,
     ]
