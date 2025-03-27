@@ -5,8 +5,8 @@
 import Contract from "./evmasm.js";
 import { utils } from "ffjavascript";
 const { unstringifyBigInts } = utils;
-import { ethers } from "ethers";
-
+import {keccak_256} from "@noble/hashes/sha3";
+import {bytesToHex} from '@noble/hashes/utils';
 import poseidonConstants from "./poseidon_constants.js";
 
 const { C:K, M } = unstringifyBigInts(poseidonConstants);
@@ -104,10 +104,10 @@ export function createCode(nInputs) {
     C.calldataload();
     C.div();
     C.dup(0);
-    C.push(ethers.keccak256(ethers.toUtf8Bytes(`poseidon(uint256[${nInputs}])`)).slice(0, 10)); // poseidon(uint256[n])
+    C.push("0x"+bytesToHex(keccak_256(`poseidon(uint256[${nInputs}])`).slice(0, 4))); // poseidon(uint256[n])
     C.eq();
     C.swap(1);
-    C.push(ethers.keccak256(ethers.toUtf8Bytes(`poseidon(bytes32[${nInputs}])`)).slice(0, 10)); // poseidon(bytes32[n])
+    C.push("0x"+bytesToHex(keccak_256(`poseidon(bytes32[${nInputs}])`).slice(0, 4))); // poseidon(bytes32[n])
     C.eq();
     C.or();
     C.jmpi("start");
@@ -120,7 +120,7 @@ export function createCode(nInputs) {
     C.push("0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001");  // q
 
     // Load t values from the call data.
-    // The function has a single array param param
+    // The function has a single array param
     // [Selector (4)] [item1 (32)] [item2 (32)] ....
     // Stack positions 0-nInputs.
     for (let i=0; i<nInputs; i++) {

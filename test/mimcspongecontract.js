@@ -33,7 +33,7 @@ describe("MiMC Sponge Smart contract test", () => {
         mimc = await C.deploy();
     });
 
-    it("Shold calculate the mimc correctly", async () => {
+    it("Should calculate the mimc correctly", async () => {
 
         const res = await mimc["MiMCSponge"](1,2, 3);
 
