@@ -71,12 +71,12 @@ describe("Poseidon Smart contract test", function () {
         poseidon6 = await C6.deploy();
 
         // Check the code hashes match the expected values
-        const C1CodeHash = ethers.utils.keccak256(C1Code);
-        const C2CodeHash = ethers.utils.keccak256(C2Code);
-        const C3CodeHash = ethers.utils.keccak256(C3Code);
-        const C4CodeHash = ethers.utils.keccak256(C4Code);
-        const C5CodeHash = ethers.utils.keccak256(C5Code);
-        const C6CodeHash = ethers.utils.keccak256(C6Code);
+        const C1CodeHash = ethers.keccak256(C1Code);
+        const C2CodeHash = ethers.keccak256(C2Code);
+        const C3CodeHash = ethers.keccak256(C3Code);
+        const C4CodeHash = ethers.keccak256(C4Code);
+        const C5CodeHash = ethers.keccak256(C5Code);
+        const C6CodeHash = ethers.keccak256(C6Code);
         assert.equal(
             C1CodeHash,
             "0x6086de4ac21c89a98c65d2c8aa22a52018839944302ee65a57d17e6cd05962e3"

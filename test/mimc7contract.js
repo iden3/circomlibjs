@@ -33,7 +33,7 @@ describe("MiMC Smart contract test", function () {
 
         mimc = await C.deploy();
 
-        const codeHash = ethers.utils.keccak256(code);
+        const codeHash = ethers.keccak256(code);
         assert.equal(
             codeHash,
             "0xd0b844e2fa96af5b59f8ec7c7a060936d7cfbe11ad3b2f1629333d164c2b3ab4"

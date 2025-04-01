@@ -32,7 +32,7 @@ describe("MiMC Sponge Smart contract test", () => {
 
         mimc = await C.deploy();
 
-        const codeHash = ethers.utils.keccak256(code);
+        const codeHash = ethers.keccak256(code);
         assert.equal(
             codeHash,
             "0x08d93c30978b3338cd0c82d76edbda569d4dc71a56de48598bb8ba763669fe30"
