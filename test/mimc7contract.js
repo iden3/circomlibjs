@@ -24,14 +24,21 @@ describe("MiMC Smart contract test", function () {
 
     it("Should deploy the contract", async () => {
 
-
+        const code = createCode(SEED, 91);
         const C = new ethers.ContractFactory(
             abi,
-            createCode(SEED, 91),
+            code,
             account
           );
 
         mimc = await C.deploy();
+
+        const codeHash = ethers.utils.keccak256(code);
+        assert.equal(
+            codeHash,
+            "0xd0b844e2fa96af5b59f8ec7c7a060936d7cfbe11ad3b2f1629333d164c2b3ab4"
+        );
+
     });
 
     it("Shold calculate the mimc correctly", async () => {
