@@ -1,7 +1,7 @@
 import chai from "chai";
 import {createCode, abi} from "../src/mimcsponge_gencontract.js";
-import { ethers } from "ethers";
-import ganache from "ganache";
+import pkg from 'hardhat';
+const { ethers } = pkg;
 
 import buildMimcSponge from "../src/mimcsponge.js";
 
@@ -17,9 +17,7 @@ describe("MiMC Sponge Smart contract test", () => {
     let account;
 
     before(async () => {
-        const provider = new ethers.providers.Web3Provider(ganache.provider());
-
-        account = provider.getSigner(0);
+        [account] = await ethers.getSigners();
         mimcJS = await buildMimcSponge();
     });
 
@@ -34,14 +32,14 @@ describe("MiMC Sponge Smart contract test", () => {
 
         mimc = await C.deploy();
 
-        const codeHash = ethers.utils.keccak256(code);
+        const codeHash = ethers.keccak256(code);
         assert.equal(
             codeHash,
             "0x08d93c30978b3338cd0c82d76edbda569d4dc71a56de48598bb8ba763669fe30"
         );
     });
 
-    it("Shold calculate the mimc correctly", async () => {
+    it("Should calculate the mimc correctly", async () => {
 
         const res = await mimc["MiMCSponge"](1,2, 3);
 

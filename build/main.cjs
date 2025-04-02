@@ -2,7 +2,8 @@
 
 var ffjavascript = require('ffjavascript');
 var blake1 = require('@noble/hashes/blake1');
-var ethers = require('ethers');
+var sha3 = require('@noble/hashes/sha3');
+var utils = require('@noble/hashes/utils');
 var blake2b = require('@noble/hashes/blake2b');
 var assert = require('assert');
 
@@ -162,7 +163,7 @@ class Mimc7 {
     getIV(seed) {
         const F = this.F;
         if (typeof seed === "undefined") seed = SEED$1;
-        const c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed+"_iv"));
+        const c = "0x" + utils.bytesToHex(sha3.keccak_256(seed+"_iv"));
         const cn = ffjavascript.Scalar.e(c);
         const iv = ffjavascript.Scalar.mod(cn, F.p);
         return iv;
@@ -172,11 +173,11 @@ class Mimc7 {
         const F = this.F;
         if (typeof nRounds === "undefined") nRounds = NROUNDS$1;
         const cts = new Array(nRounds);
-        let c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(SEED$1));
+        let c = sha3.keccak_256(SEED$1);
         for (let i=1; i<nRounds; i++) {
-            c = ethers.ethers.utils.keccak256(c);
+            c = sha3.keccak_256(c);
 
-            cts[i] = F.e(c);
+            cts[i] = F.e("0x" + utils.bytesToHex(c));
         }
         cts[0] = F.e(0);
         return cts;
@@ -235,7 +236,7 @@ class MimcSponge {
     getIV (seed)  {
         const F = this.F;
         if (typeof seed === "undefined") seed = SEED;
-        const c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed+"_iv"));
+        const c = "0x" + utils.bytesToHex(sha3.keccak_256(seed+"_iv"));
         const cn = ffjavascript.Scalar.e(c);
         const iv = cn.mod(F.p);
         return iv;
@@ -245,10 +246,11 @@ class MimcSponge {
         const F = this.F;
         if (typeof nRounds === "undefined") nRounds = NROUNDS;
         const cts = new Array(nRounds);
-        let c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(SEED));        for (let i=1; i<nRounds; i++) {
-            c = ethers.ethers.utils.keccak256(c);
+        let c = sha3.keccak_256(SEED);
+        for (let i=1; i<nRounds; i++) {
+            c = sha3.keccak_256(c);
 
-            cts[i] = F.e(c);
+            cts[i] = F.e("0x" + utils.bytesToHex(c));
         }
         cts[0] = F.e(0);
         cts[cts.length - 1] = F.e(0);
@@ -25967,7 +25969,7 @@ class Contract {
         // Check all labels are defined
         const pendingLabels = Object.keys(this.pendingLabels);
         if (pendingLabels.length>0) {
-            throw new Error("Lables not defined: "+ pendingLabels.join(", "));
+            throw new Error("Labels not defined: "+ pendingLabels.join(", "));
         }
 
         let setLoaderLength = 0;
@@ -25987,7 +25989,7 @@ class Contract {
             genLoadedLength = C.code.length;
         }
 
-        return ethers.ethers.utils.hexlify(C.code.concat(this.code));
+        return "0x" + utils.bytesToHex(new Uint8Array(C.code.concat(this.code)));
     }
 
     stop() { this.code.push(0x00); }
@@ -26113,7 +26115,7 @@ class Contract {
             S = "0x" +S;
             data = S;
         }
-        const d = ethers.ethers.utils.arrayify(data);
+        const d = utils.hexToBytes(data.substring(2)); // remove 0x and convert to bytes
         if (d.length == 0 || d.length > 32) {
             throw new Error("Assertion failed");
         }
@@ -26162,7 +26164,8 @@ class Contract {
 
 function createCode$2(seed, n) {
 
-    let ci = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed));
+    let ci = sha3.keccak_256(seed);
+
     const C = new Contract();
 
     C.push(0x44);
@@ -26204,12 +26207,12 @@ function createCode$2(seed, n) {
     C.mulmod();         // r=t^7 k q
 
     for (let i=0; i<n-1; i++) {
-        ci = ethers.ethers.utils.keccak256(ci);
+        ci = sha3.keccak_256(ci);
         C.dup(2);       // q r k q
         C.dup(0);       // q q r k q
         C.dup(0);       // q q q r k q
         C.swap(3);      // r q q q k q
-        C.push(ci);     // c r q q k q
+        C.push("0x" + utils.bytesToHex(ci));     // c r q q k q
         C.addmod();     // s=c+r q q k q
         C.dup(3);       // k s q q k q
         C.addmod();     // t=s+k q k q
@@ -26275,7 +26278,7 @@ var _mimc7Contract = /*#__PURE__*/Object.freeze({
 
 function createCode$1(seed, n) {
 
-    let ci = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed));
+    let ci = sha3.keccak_256(seed);
 
     const C = new Contract();
 
@@ -26318,16 +26321,16 @@ function createCode$1(seed, n) {
 
     for (let i=0; i<n-1; i++) {
         if (i < n-2) {
-          ci = ethers.ethers.utils.keccak256(ci);
+            ci = sha3.keccak_256(ci);
         } else {
-          ci = "0x00";
+            ci = new Uint8Array([0]);
         }
         C.swap(1);      // xR xL k q
         C.dup(3);       // q xR xL k q
         C.dup(3);       // k q xR xL k q
         C.dup(1);       // q k q xR xL k q
         C.dup(4);       // xL q k q xR xL k q
-        C.push(ci);     // ci xL q k q xR xL k q
+        C.push("0x" + utils.bytesToHex(ci));     // ci xL q k q xR xL k q
         C.addmod();     // a=ci+xL k q xR xL k q
         C.addmod();     // t=a+k xR xL k q
         C.dup(4);       // q t xR xL k q
@@ -26704,10 +26707,10 @@ function createCode(nInputs) {
     C.calldataload();
     C.div();
     C.dup(0);
-    C.push(ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(`poseidon(uint256[${nInputs}])`)).slice(0, 10)); // poseidon(uint256[n])
+    C.push("0x"+utils.bytesToHex(sha3.keccak_256(`poseidon(uint256[${nInputs}])`).slice(0, 4))); // poseidon(uint256[n])
     C.eq();
     C.swap(1);
-    C.push(ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(`poseidon(bytes32[${nInputs}])`)).slice(0, 10)); // poseidon(bytes32[n])
+    C.push("0x"+utils.bytesToHex(sha3.keccak_256(`poseidon(bytes32[${nInputs}])`).slice(0, 4))); // poseidon(bytes32[n])
     C.eq();
     C.or();
     C.jmpi("start");
@@ -26720,7 +26723,7 @@ function createCode(nInputs) {
     C.push("0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001");  // q
 
     // Load t values from the call data.
-    // The function has a single array param param
+    // The function has a single array param
     // [Selector (4)] [item1 (32)] [item2 (32)] ....
     // Stack positions 0-nInputs.
     for (let i=0; i<nInputs; i++) {

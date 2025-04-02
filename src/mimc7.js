@@ -1,6 +1,8 @@
 import {getCurveFromName, Scalar} from "ffjavascript";
 
-import { ethers } from "ethers";
+import {keccak_256} from "@noble/hashes/sha3";
+import {bytesToHex} from '@noble/hashes/utils';
+
 
 const SEED = "mimc";
 const NROUNDS = 91;
@@ -20,7 +22,7 @@ class Mimc7 {
     getIV(seed) {
         const F = this.F;
         if (typeof seed === "undefined") seed = SEED;
-        const c = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(seed+"_iv"));
+        const c = "0x" + bytesToHex(keccak_256(seed+"_iv"));
         const cn = Scalar.e(c);
         const iv = Scalar.mod(cn, F.p);
         return iv;
@@ -31,11 +33,11 @@ class Mimc7 {
         if (typeof seed === "undefined") seed = SEED;
         if (typeof nRounds === "undefined") nRounds = NROUNDS;
         const cts = new Array(nRounds);
-        let c = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(SEED));
+        let c = keccak_256(SEED);
         for (let i=1; i<nRounds; i++) {
-            c = ethers.utils.keccak256(c);
+            c = keccak_256(c);
 
-            cts[i] = F.e(c);
+            cts[i] = F.e("0x" + bytesToHex(c));
         }
         cts[0] = F.e(0);
         return cts;

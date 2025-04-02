@@ -2,8 +2,8 @@
 // License: LGPL-3.0+
 //
 
-import { ethers } from "ethers";
-import {Scalar} from "ffjavascript";
+import { Scalar } from "ffjavascript";
+import {bytesToHex, hexToBytes} from "@noble/hashes/utils";
 
 export default class Contract {
     constructor() {
@@ -18,7 +18,7 @@ export default class Contract {
         // Check all labels are defined
         const pendingLabels = Object.keys(this.pendingLabels);
         if (pendingLabels.length>0) {
-            throw new Error("Lables not defined: "+ pendingLabels.join(", "));
+            throw new Error("Labels not defined: "+ pendingLabels.join(", "));
         }
 
         let setLoaderLength = 0;
@@ -38,7 +38,7 @@ export default class Contract {
             genLoadedLength = C.code.length;
         }
 
-        return ethers.utils.hexlify(C.code.concat(this.code));
+        return "0x" + bytesToHex(new Uint8Array(C.code.concat(this.code)));
     }
 
     stop() { this.code.push(0x00); }
@@ -164,7 +164,7 @@ export default class Contract {
             S = "0x" +S;
             data = S;
         }
-        const d = ethers.utils.arrayify(data);
+        const d = hexToBytes(data.substring(2)); // remove 0x and convert to bytes
         if (d.length == 0 || d.length > 32) {
             throw new Error("Assertion failed");
         }
