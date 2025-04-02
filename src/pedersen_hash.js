@@ -1,7 +1,7 @@
-import buildBabyJub from "./babyjub.js";
-import blake2b from "blake2b";
-import createBlakeHash from "blake-hash";
+import { blake256 } from "@noble/hashes/blake1";
+import { blake2b } from "@noble/hashes/blake2b";
 import { Scalar } from "ffjavascript";
+import buildBabyJub from "./babyjub.js";
 
 const GENPOINT_PREFIX = "PedersenGenerator";
 const windowSize = 4;
@@ -21,9 +21,9 @@ class PedersenHash {
 
     baseHash(type, S) {
         if (type == "blake") {
-            return createBlakeHash("blake256").update(S).digest();
+            return Buffer.from(blake256(S));
         } else if (type == "blake2b") {
-            return Buffer.from(blake2b(32).update(Buffer.from(S)).digest());
+            return Buffer.from(blake2b(Buffer.from(S)));
         }
     }
 
