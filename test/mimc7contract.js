@@ -1,7 +1,7 @@
 import chai from "chai";
 import {createCode, abi} from "../src/mimc7_gencontract.js";
-import { ethers } from "ethers";
-import ganache from "ganache";
+import pkg from 'hardhat';
+const { ethers } = pkg;
 
 import buildMimc7 from "../src/mimc7.js";
 
@@ -18,22 +18,27 @@ describe("MiMC Smart contract test", function () {
     this.timeout(100000);
 
     before(async () => {
-        const provider = new ethers.providers.Web3Provider(ganache.provider());
-
-        account = provider.getSigner(0);
+        [account] = await ethers.getSigners();
         mimcJS = await buildMimc7();
     });
 
     it("Should deploy the contract", async () => {
 
-
+        const code = createCode(SEED, 91);
         const C = new ethers.ContractFactory(
             abi,
-            createCode(SEED, 91),
+            code,
             account
           );
 
         mimc = await C.deploy();
+
+        const codeHash = ethers.keccak256(code);
+        assert.equal(
+            codeHash,
+            "0xd0b844e2fa96af5b59f8ec7c7a060936d7cfbe11ad3b2f1629333d164c2b3ab4"
+        );
+
     });
 
     it("Shold calculate the mimc correctly", async () => {

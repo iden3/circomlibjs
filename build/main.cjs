@@ -1,18 +1,11 @@
 'use strict';
 
-Object.defineProperty(exports, '__esModule', { value: true });
-
 var ffjavascript = require('ffjavascript');
-var blake2b = require('blake2b');
-var createBlakeHash = require('blake-hash');
-var ethers = require('ethers');
+var blake1 = require('@noble/hashes/blake1');
+var sha3 = require('@noble/hashes/sha3');
+var utils = require('@noble/hashes/utils');
+var blake2b = require('@noble/hashes/blake2b');
 var assert = require('assert');
-
-function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
-
-var blake2b__default = /*#__PURE__*/_interopDefaultLegacy(blake2b);
-var createBlakeHash__default = /*#__PURE__*/_interopDefaultLegacy(createBlakeHash);
-var assert__default = /*#__PURE__*/_interopDefaultLegacy(assert);
 
 async function buildBabyJub() {
     const bn128 = await ffjavascript.getCurveFromName("bn128", true);
@@ -152,6 +145,177 @@ class BabyJub {
     }
 }
 
+const SEED$1 = "mimc";
+const NROUNDS$1 = 91;
+
+async function buildMimc7() {
+    const bn128 = await ffjavascript.getCurveFromName("bn128", true);
+    return new Mimc7(bn128.Fr);
+}
+
+
+class Mimc7 {
+    constructor (F) {
+        this.F = F;
+        this.cts = this.getConstants(SEED$1, 91);
+    }
+
+    getIV(seed) {
+        const F = this.F;
+        if (typeof seed === "undefined") seed = SEED$1;
+        const c = "0x" + utils.bytesToHex(sha3.keccak_256(seed+"_iv"));
+        const cn = ffjavascript.Scalar.e(c);
+        const iv = ffjavascript.Scalar.mod(cn, F.p);
+        return iv;
+    };
+
+    getConstants(seed, nRounds) {
+        const F = this.F;
+        if (typeof nRounds === "undefined") nRounds = NROUNDS$1;
+        const cts = new Array(nRounds);
+        let c = sha3.keccak_256(SEED$1);
+        for (let i=1; i<nRounds; i++) {
+            c = sha3.keccak_256(c);
+
+            cts[i] = F.e("0x" + utils.bytesToHex(c));
+        }
+        cts[0] = F.e(0);
+        return cts;
+    }
+
+    hash (_x_in, _k) {
+        const F = this.F;
+        const x_in = F.e(_x_in);
+        const k = F.e(_k);
+        let r;
+        for (let i=0; i<NROUNDS$1; i++) {
+            const c = this.cts[i];
+            const t = (i==0) ? F.add(x_in, k) : F.add(F.add(r, k), c);
+            const t2 = F.square(t);
+            const t4 = F.square(t2);
+            r = F.mul(F.mul(t4, t2), t);
+        }
+        return F.add(r, k);
+    }
+
+    multiHash(arr, key) {
+        const F = this.F;
+        let r;
+        if (typeof(key) === "undefined") {
+            r = F.zero;
+        } else {
+            r = F.e(key);
+        }
+        for (let i=0; i<arr.length; i++) {
+            r = F.add(
+                F.add(
+                    r,
+                    F.e(arr[i])
+                ),
+                this.hash(F.e(arr[i]), r)
+            );
+        }
+        return r;
+    }
+}
+
+const SEED = "mimcsponge";
+const NROUNDS = 220;
+
+async function buildMimcSponge() {
+    const bn128 = await ffjavascript.getCurveFromName("bn128", true);
+    return new MimcSponge(bn128.Fr);
+}
+
+class MimcSponge {
+    constructor (F) {
+        this.F = F;
+        this.cts = this.getConstants(SEED, NROUNDS);
+    }
+
+    getIV (seed)  {
+        const F = this.F;
+        if (typeof seed === "undefined") seed = SEED;
+        const c = "0x" + utils.bytesToHex(sha3.keccak_256(seed+"_iv"));
+        const cn = ffjavascript.Scalar.e(c);
+        const iv = cn.mod(F.p);
+        return iv;
+    };
+
+    getConstants (seed, nRounds)  {
+        const F = this.F;
+        if (typeof nRounds === "undefined") nRounds = NROUNDS;
+        const cts = new Array(nRounds);
+        let c = sha3.keccak_256(SEED);
+        for (let i=1; i<nRounds; i++) {
+            c = sha3.keccak_256(c);
+
+            cts[i] = F.e("0x" + utils.bytesToHex(c));
+        }
+        cts[0] = F.e(0);
+        cts[cts.length - 1] = F.e(0);
+        return cts;
+    };
+
+
+    hash(_xL_in, _xR_in, _k) {
+        const F = this.F;
+        let xL = F.e(_xL_in);
+        let xR = F.e(_xR_in);
+        const k = F.e(_k);
+        for (let i=0; i<NROUNDS; i++) {
+            const c = this.cts[i];
+            const t = (i==0) ? F.add(xL, k) : F.add(F.add(xL, k), c);
+            const t2 = F.square(t);
+            const t4 = F.square(t2);
+            const t5 = F.mul(t4, t);
+            const xR_tmp = F.e(xR);
+            if (i < (NROUNDS - 1)) {
+                xR = xL;
+                xL = F.add(xR_tmp, t5);
+            } else {
+                xR = F.add(xR_tmp, t5);
+            }
+        }
+        return {
+            xL: xL,
+            xR: xR
+        };
+    }
+
+    multiHash(arr, key, numOutputs)  {
+        const F = this.F;
+        if (typeof(numOutputs) === "undefined") {
+            numOutputs = 1;
+        }
+        if (typeof(key) === "undefined") {
+            key = F.zero;
+        }
+
+        let R = F.zero;
+        let C = F.zero;
+
+        for (let i=0; i<arr.length; i++) {
+            R = F.add(R, F.e(arr[i]));
+            const S = this.hash(R, C, key);
+            R = S.xL;
+            C = S.xR;
+        }
+        let outputs = [R];
+        for (let i=1; i < numOutputs; i++) {
+            const S = this.hash(R, C, key);
+            R = S.xL;
+            C = S.xR;
+            outputs.push(R);
+        }
+        if (numOutputs == 1) {
+            return outputs[0];
+        } else {
+            return outputs;
+        }
+    }
+}
+
 const GENPOINT_PREFIX = "PedersenGenerator";
 const windowSize = 4;
 const nWindowsPerSegment = 50;
@@ -170,9 +334,9 @@ class PedersenHash {
 
     baseHash(type, S) {
         if (type == "blake") {
-            return createBlakeHash__default["default"]("blake256").update(S).digest();
+            return Buffer.from(blake1.blake256(S));
         } else if (type == "blake2b") {
-            return Buffer.from(blake2b__default["default"](32).update(Buffer.from(S)).digest());
+            return Buffer.from(blake2b.blake2b(Buffer.from(S)));
         }
     }
 
@@ -272,80 +436,6 @@ class PedersenHash {
             res[i*8+7] = (b & 0x80) >> 7;
         }
         return res;
-    }
-}
-
-const SEED$1 = "mimc";
-const NROUNDS$1 = 91;
-
-async function buildMimc7() {
-    const bn128 = await ffjavascript.getCurveFromName("bn128", true);
-    return new Mimc7(bn128.Fr);
-}
-
-
-class Mimc7 {
-    constructor (F) {
-        this.F = F;
-        this.cts = this.getConstants(SEED$1, 91);
-    }
-
-    getIV(seed) {
-        const F = this.F;
-        if (typeof seed === "undefined") seed = SEED$1;
-        const c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed+"_iv"));
-        const cn = ffjavascript.Scalar.e(c);
-        const iv = ffjavascript.Scalar.mod(cn, F.p);
-        return iv;
-    };
-
-    getConstants(seed, nRounds) {
-        const F = this.F;
-        if (typeof nRounds === "undefined") nRounds = NROUNDS$1;
-        const cts = new Array(nRounds);
-        let c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(SEED$1));
-        for (let i=1; i<nRounds; i++) {
-            c = ethers.ethers.utils.keccak256(c);
-
-            cts[i] = F.e(c);
-        }
-        cts[0] = F.e(0);
-        return cts;
-    }
-
-    hash (_x_in, _k) {
-        const F = this.F;
-        const x_in = F.e(_x_in);
-        const k = F.e(_k);
-        let r;
-        for (let i=0; i<NROUNDS$1; i++) {
-            const c = this.cts[i];
-            const t = (i==0) ? F.add(x_in, k) : F.add(F.add(r, k), c);
-            const t2 = F.square(t);
-            const t4 = F.square(t2);
-            r = F.mul(F.mul(t4, t2), t);
-        }
-        return F.add(r, k);
-    }
-
-    multiHash(arr, key) {
-        const F = this.F;
-        let r;
-        if (typeof(key) === "undefined") {
-            r = F.zero;
-        } else {
-            r = F.e(key);
-        }
-        for (let i=0; i<arr.length; i++) {
-            r = F.add(
-                F.add(
-                    r,
-                    F.e(arr[i])
-                ),
-                this.hash(F.e(arr[i]), r)
-            );
-        }
-        return r;
     }
 }
 
@@ -25585,102 +25675,6 @@ function buildPoseidonWasm(module) {
     module.exportFunction("poseidon");
 }
 
-const SEED = "mimcsponge";
-const NROUNDS = 220;
-
-async function buildMimcSponge() {
-    const bn128 = await ffjavascript.getCurveFromName("bn128", true);
-    return new MimcSponge(bn128.Fr);
-}
-
-class MimcSponge {
-    constructor (F) {
-        this.F = F;
-        this.cts = this.getConstants(SEED, NROUNDS);
-    }
-
-    getIV (seed)  {
-        const F = this.F;
-        if (typeof seed === "undefined") seed = SEED;
-        const c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed+"_iv"));
-        const cn = ffjavascript.Scalar.e(c);
-        const iv = cn.mod(F.p);
-        return iv;
-    };
-
-    getConstants (seed, nRounds)  {
-        const F = this.F;
-        if (typeof nRounds === "undefined") nRounds = NROUNDS;
-        const cts = new Array(nRounds);
-        let c = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(SEED));        for (let i=1; i<nRounds; i++) {
-            c = ethers.ethers.utils.keccak256(c);
-
-            cts[i] = F.e(c);
-        }
-        cts[0] = F.e(0);
-        cts[cts.length - 1] = F.e(0);
-        return cts;
-    };
-
-
-    hash(_xL_in, _xR_in, _k) {
-        const F = this.F;
-        let xL = F.e(_xL_in);
-        let xR = F.e(_xR_in);
-        const k = F.e(_k);
-        for (let i=0; i<NROUNDS; i++) {
-            const c = this.cts[i];
-            const t = (i==0) ? F.add(xL, k) : F.add(F.add(xL, k), c);
-            const t2 = F.square(t);
-            const t4 = F.square(t2);
-            const t5 = F.mul(t4, t);
-            const xR_tmp = F.e(xR);
-            if (i < (NROUNDS - 1)) {
-                xR = xL;
-                xL = F.add(xR_tmp, t5);
-            } else {
-                xR = F.add(xR_tmp, t5);
-            }
-        }
-        return {
-            xL: xL,
-            xR: xR
-        };
-    }
-
-    multiHash(arr, key, numOutputs)  {
-        const F = this.F;
-        if (typeof(numOutputs) === "undefined") {
-            numOutputs = 1;
-        }
-        if (typeof(key) === "undefined") {
-            key = F.zero;
-        }
-
-        let R = F.zero;
-        let C = F.zero;
-
-        for (let i=0; i<arr.length; i++) {
-            R = F.add(R, F.e(arr[i]));
-            const S = this.hash(R, C, key);
-            R = S.xL;
-            C = S.xR;
-        }
-        let outputs = [R];
-        for (let i=1; i < numOutputs; i++) {
-            const S = this.hash(R, C, key);
-            R = S.xL;
-            C = S.xR;
-            outputs.push(R);
-        }
-        if (numOutputs == 1) {
-            return outputs[0];
-        } else {
-            return outputs;
-        }
-    }
-}
-
 async function buildEddsa() {
     const babyJub = await buildBabyJub();
     const pedersenHash = await buildPedersenHash();
@@ -25710,7 +25704,7 @@ class Eddsa {
 
     prv2pub(prv) {
         this.babyJub.F;
-        const sBuff = this.pruneBuffer(createBlakeHash__default["default"]("blake512").update(Buffer.from(prv)).digest());
+        const sBuff = this.pruneBuffer(blake1.blake512(Buffer.from(prv)));
         let s = ffjavascript.Scalar.fromRprLE(sBuff, 0, 32);
         const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, ffjavascript.Scalar.shr(s,3));
         return A;
@@ -25718,14 +25712,14 @@ class Eddsa {
 
     signPedersen(prv, msg) {
         this.babyJub.F;
-        const sBuff = this.pruneBuffer(createBlakeHash__default["default"]("blake512").update(Buffer.from(prv)).digest());
+        const sBuff = this.pruneBuffer(blake1.blake512(Buffer.from(prv)));
         const s = ffjavascript.Scalar.fromRprLE(sBuff, 0, 32);
         const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, ffjavascript.Scalar.shr(s, 3));
 
         const composeBuff = new Uint8Array(32 + msg.length);
         composeBuff.set(sBuff.slice(32), 0);
         composeBuff.set(msg, 32);
-        const rBuff = createBlakeHash__default["default"]("blake512").update(Buffer.from(composeBuff)).digest();
+        const rBuff = blake1.blake512(Buffer.from(composeBuff));
         let r = ffjavascript.Scalar.mod(ffjavascript.Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
         const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
         const R8p = this.babyJub.packPoint(R8);
@@ -25754,7 +25748,7 @@ class Eddsa {
 
     signMiMC(prv, msg) {
         const F = this.babyJub.F;
-        const sBuff = this.pruneBuffer(createBlakeHash__default["default"]("blake512").update(Buffer.from(prv)).digest());
+        const sBuff = this.pruneBuffer(blake1.blake512(Buffer.from(prv)));
         const s = ffjavascript.Scalar.fromRprLE(sBuff, 0, 32);
         const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, ffjavascript.Scalar.shr(s, 3));
 
@@ -25762,7 +25756,7 @@ class Eddsa {
         const composeBuff = new Uint8Array(32 + msg.length);
         composeBuff.set(sBuff.slice(32), 0);
         F.toRprLE(composeBuff, 32, msg);
-        const rBuff = createBlakeHash__default["default"]("blake512").update(Buffer.from(composeBuff)).digest();
+        const rBuff = blake1.blake512(Buffer.from(composeBuff));
         let r = ffjavascript.Scalar.mod(ffjavascript.Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
         const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
 
@@ -25783,14 +25777,14 @@ class Eddsa {
 
     signMiMCSponge(prv, msg) {
         const F = this.babyJub.F;
-        const sBuff = this.pruneBuffer(createBlakeHash__default["default"]("blake512").update(Buffer.from(prv)).digest());
+        const sBuff = this.pruneBuffer(blake1.blake512(Buffer.from(prv)));
         const s = ffjavascript.Scalar.fromRprLE(sBuff, 0, 32);
         const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, ffjavascript.Scalar.shr(s, 3));
 
         const composeBuff = new Uint8Array(32 + msg.length);
         composeBuff.set(sBuff.slice(32), 0);
         F.toRprLE(composeBuff, 32, msg);
-        const rBuff = createBlakeHash__default["default"]("blake512").update(Buffer.from(composeBuff)).digest();
+        const rBuff = blake1.blake512(Buffer.from(composeBuff));
         let r = ffjavascript.Scalar.mod(ffjavascript.Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
         const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
 
@@ -25811,14 +25805,14 @@ class Eddsa {
 
     signPoseidon(prv, msg) {
         const F = this.babyJub.F;
-        const sBuff = this.pruneBuffer(createBlakeHash__default["default"]("blake512").update(Buffer.from(prv)).digest());
+        const sBuff = this.pruneBuffer(blake1.blake512(Buffer.from(prv)));
         const s = ffjavascript.Scalar.fromRprLE(sBuff, 0, 32);
         const A = this.babyJub.mulPointEscalar(this.babyJub.Base8, ffjavascript.Scalar.shr(s, 3));
 
         const composeBuff = new Uint8Array(32 + msg.length);
         composeBuff.set(sBuff.slice(32), 0);
         F.toRprLE(composeBuff, 32, msg);
-        const rBuff = createBlakeHash__default["default"]("blake512").update(Buffer.from(composeBuff)).digest();
+        const rBuff = blake1.blake512(Buffer.from(composeBuff));
         let r = ffjavascript.Scalar.mod(ffjavascript.Scalar.fromRprLE(rBuff, 0, 64), this.babyJub.subOrder);
         const R8 = this.babyJub.mulPointEscalar(this.babyJub.Base8, r);
 
@@ -25958,6 +25952,9 @@ class Eddsa {
 }
 
 // Copyright (c) 2018 Jordi Baylina
+// License: LGPL-3.0+
+//
+
 
 class Contract {
     constructor() {
@@ -25972,7 +25969,7 @@ class Contract {
         // Check all labels are defined
         const pendingLabels = Object.keys(this.pendingLabels);
         if (pendingLabels.length>0) {
-            throw new Error("Lables not defined: "+ pendingLabels.join(", "));
+            throw new Error("Labels not defined: "+ pendingLabels.join(", "));
         }
 
         let setLoaderLength = 0;
@@ -25992,7 +25989,7 @@ class Contract {
             genLoadedLength = C.code.length;
         }
 
-        return ethers.ethers.utils.hexlify(C.code.concat(this.code));
+        return "0x" + utils.bytesToHex(new Uint8Array(C.code.concat(this.code)));
     }
 
     stop() { this.code.push(0x00); }
@@ -26118,7 +26115,7 @@ class Contract {
             S = "0x" +S;
             data = S;
         }
-        const d = ethers.ethers.utils.arrayify(data);
+        const d = utils.hexToBytes(data.substring(2)); // remove 0x and convert to bytes
         if (d.length == 0 || d.length > 32) {
             throw new Error("Assertion failed");
         }
@@ -26161,10 +26158,14 @@ class Contract {
 }
 
 // Copyright (c) 2018 Jordi Baylina
+// License: LGPL-3.0+
+//
+
 
 function createCode$2(seed, n) {
 
-    let ci = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed));
+    let ci = sha3.keccak_256(seed);
+
     const C = new Contract();
 
     C.push(0x44);
@@ -26206,12 +26207,12 @@ function createCode$2(seed, n) {
     C.mulmod();         // r=t^7 k q
 
     for (let i=0; i<n-1; i++) {
-        ci = ethers.ethers.utils.keccak256(ci);
+        ci = sha3.keccak_256(ci);
         C.dup(2);       // q r k q
         C.dup(0);       // q q r k q
         C.dup(0);       // q q q r k q
         C.swap(3);      // r q q q k q
-        C.push(ci);     // c r q q k q
+        C.push("0x" + utils.bytesToHex(ci));     // c r q q k q
         C.addmod();     // s=c+r q q k q
         C.dup(3);       // k s q q k q
         C.addmod();     // t=s+k q k q
@@ -26266,15 +26267,18 @@ const abi$1 = [
 
 var _mimc7Contract = /*#__PURE__*/Object.freeze({
     __proto__: null,
-    createCode: createCode$2,
-    abi: abi$1
+    abi: abi$1,
+    createCode: createCode$2
 });
 
 // Copyright (c) 2018 Jordi Baylina
+// License: LGPL-3.0+
+//
+
 
 function createCode$1(seed, n) {
 
-    let ci = ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(seed));
+    let ci = sha3.keccak_256(seed);
 
     const C = new Contract();
 
@@ -26317,16 +26321,16 @@ function createCode$1(seed, n) {
 
     for (let i=0; i<n-1; i++) {
         if (i < n-2) {
-          ci = ethers.ethers.utils.keccak256(ci);
+            ci = sha3.keccak_256(ci);
         } else {
-          ci = "0x00";
+            ci = new Uint8Array([0]);
         }
         C.swap(1);      // xR xL k q
         C.dup(3);       // q xR xL k q
         C.dup(3);       // k q xR xL k q
         C.dup(1);       // q k q xR xL k q
         C.dup(4);       // xL q k q xR xL k q
-        C.push(ci);     // ci xL q k q xR xL k q
+        C.push("0x" + utils.bytesToHex(ci));     // ci xL q k q xR xL k q
         C.addmod();     // a=ci+xL k q xR xL k q
         C.addmod();     // t=a+k xR xL k q
         C.dup(4);       // q t xR xL k q
@@ -26391,8 +26395,8 @@ const abi = [
 
 var _mimcSpongeContract = /*#__PURE__*/Object.freeze({
     __proto__: null,
-    createCode: createCode$1,
-    abi: abi
+    abi: abi,
+    createCode: createCode$1
 });
 
 var poseidonConstants = {
@@ -26603,6 +26607,9 @@ var poseidonConstants = {
   };
 
 // Copyright (c) 2018 Jordi Baylina
+// License: LGPL-3.0+
+//
+
 const { unstringifyBigInts } = ffjavascript.utils;
 
 const { C:K, M } = unstringifyBigInts(poseidonConstants);
@@ -26700,10 +26707,10 @@ function createCode(nInputs) {
     C.calldataload();
     C.div();
     C.dup(0);
-    C.push(ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(`poseidon(uint256[${nInputs}])`)).slice(0, 10)); // poseidon(uint256[n])
+    C.push("0x"+utils.bytesToHex(sha3.keccak_256(`poseidon(uint256[${nInputs}])`).slice(0, 4))); // poseidon(uint256[n])
     C.eq();
     C.swap(1);
-    C.push(ethers.ethers.utils.keccak256(ethers.ethers.utils.toUtf8Bytes(`poseidon(bytes32[${nInputs}])`)).slice(0, 10)); // poseidon(bytes32[n])
+    C.push("0x"+utils.bytesToHex(sha3.keccak_256(`poseidon(bytes32[${nInputs}])`).slice(0, 4))); // poseidon(bytes32[n])
     C.eq();
     C.or();
     C.jmpi("start");
@@ -26716,7 +26723,7 @@ function createCode(nInputs) {
     C.push("0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001");  // q
 
     // Load t values from the call data.
-    // The function has a single array param param
+    // The function has a single array param
     // [Selector (4)] [item1 (32)] [item2 (32)] ....
     // Stack positions 0-nInputs.
     for (let i=0; i<nInputs; i++) {
@@ -26845,8 +26852,8 @@ async function buildPoseidon$1() {
     const pow5 = a => F.mul(a, F.square(F.square(a, a)));
 
     function poseidon(inputs, initState, nOut) {
-        assert__default["default"](inputs.length > 0);
-        assert__default["default"](inputs.length <= N_ROUNDS_P.length);
+        assert(inputs.length > 0);
+        assert(inputs.length <= N_ROUNDS_P.length);
 
         const t = inputs.length + 1;
         const nRoundsF = N_ROUNDS_F;
@@ -26885,6 +26892,8 @@ async function buildPoseidon$1() {
 }
 
 // Parameters are generated by a reference script https://extgit.iaik.tugraz.at/krypto/hadeshash/-/blob/master/code/generate_parameters_grain.sage
+// Used like so: sage generate_parameters_grain.sage 1 0 254 2 8 56 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001
+
 
 function unsringifyConstants(Fr, o) {
     if ((typeof(o) == "string") && (/^[0-9]+$/.test(o) ))  {
@@ -26919,8 +26928,8 @@ async function buildPoseidon() {
     const pow5 = a => F.mul(a, F.square(F.square(a, a)));
 
     function poseidon(inputs, initState, nOut) {
-        assert__default["default"](inputs.length > 0);
-        assert__default["default"](inputs.length <= N_ROUNDS_P.length);
+        assert(inputs.length > 0);
+        assert(inputs.length <= N_ROUNDS_P.length);
 
         if (initState) {
             initState = F.e(initState);
