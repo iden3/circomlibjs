@@ -30,7 +30,7 @@ class MimcSponge {
         if (typeof seed === "undefined") seed = SEED;
         if (typeof nRounds === "undefined") nRounds = NROUNDS;
         const cts = new Array(nRounds);
-        let c = keccak_256(SEED);
+        let c = keccak_256(seed);
         for (let i=1; i<nRounds; i++) {
             c = keccak_256(c);
 
