@@ -16,14 +16,31 @@ export async function buildPoseidon() {
         let buff;
         let n;
         if (Array.isArray(arr)) {
+            if (arr.some((i) => i < 0 || i >= F.p)) {
+                throw new Error(`One or more inputs are not in the field: ${F.p}`);
+            }
             n = arr.length;
             buff = new Uint8Array(n*32);
             for (let i=0; i<n; i++) buff.set(F.e(arr[i]), i*32);
         } else {
             buff = arr;
             n = buff.byteLength / 32;
-            if (n*32 != buff.byteLength) throw new Error("Invalid iput buff size");
+            if (buff.byteLength % 32 !== 0) throw new Error("Invalid input buff size");
+
+            const chunkSize = 32;
+            const chunks = [];
+            for (let i = 0; i < buff.length; i += chunkSize) {
+                chunks.push(buff.slice(i, i + chunkSize));
+            }
+
+            chunks.forEach((chunk) => {
+                const bi = chunk.reduceRight((acc, n) => (acc << 8n) | BigInt(n), 0n);
+                if (bi < 0 || bi >= F.p) {
+                    throw new Error(`One or more inputs are not in the field: ${F.p}`);
+                }
+            });
         }
+
         bn128.tm.setBuff(pIn, buff);
 
         if ((n<1)||(n>16)) throw new Error("Invalid poseidon size");

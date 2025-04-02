@@ -45,6 +45,10 @@ export default async function buildPoseidon() {
         assert(inputs.length > 0);
         assert(inputs.length <= N_ROUNDS_P.length);
 
+        if (inputs.some((i) => i < 0 || i >= F.p)) {
+            throw new Error(`One or more inputs are not in the field: ${F.p}`);
+        }
+
         const t = inputs.length + 1;
         const nRoundsF = N_ROUNDS_F;
         const nRoundsP = N_ROUNDS_P[t - 2];

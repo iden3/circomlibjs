@@ -1,5 +1,6 @@
 import chai from "chai";
 const assert = chai.assert;
+const expect = chai.expect;
 
 import buildPoseidonOpt from "../src/poseidon_opt.js";
 import {buildPoseidon as buildPoseidonWasm } from "../src/poseidon_wasm.js";
@@ -208,5 +209,58 @@ describe("Poseidon test", function () {
                 }
             }
         }
+    });
+
+    it("Should check if inputs are in field", async () => {
+
+        function arrayToReversedUint8Array(arr) {
+            const byteArray = [];
+            arr.forEach((num) => {
+                assert(num < 2n ** 256n)
+                const hex = num.toString(16);
+                const paddedHex = hex.padStart(64, '0');
+
+                for (let i = 0; i < paddedHex.length; i += 2) {
+                    byteArray.push(parseInt(paddedHex.substring(i, i + 2), 16));
+                }
+            });
+            return new Uint8Array(byteArray.reverse());
+        }
+
+        const funcFactory = (func, input) => {
+            return () => func(input);
+        }
+
+        // TODO fix this assertion
+        assert(
+          poseidonWasm.F.eq(funcFactory(poseidonWasm, [1n])(),
+          funcFactory(poseidonWasm, arrayToReversedUint8Array([1n]))()),
+        );
+
+        expect(funcFactory(poseidonWasm, [21888242871839275222246405745257275088548364400416034343698204186575808495616n]))
+          .not.to.throw();
+        expect(funcFactory(poseidonWasm, [21888242871839275222246405745257275088548364400416034343698204186575808495617n]))
+          .to.throw("One or more inputs are not in the field");
+        expect(funcFactory(poseidonWasm, ([-1n])))
+          .to.throw("One or more inputs are not in the field");
+
+        expect(funcFactory(poseidonWasm, arrayToReversedUint8Array([21888242871839275222246405745257275088548364400416034343698204186575808495616n])))
+          .not.to.throw();
+        expect(funcFactory(poseidonWasm, arrayToReversedUint8Array([21888242871839275222246405745257275088548364400416034343698204186575808495617n])))
+          .to.throw("One or more inputs are not in the field");
+
+        expect(funcFactory(poseidonOpt, [21888242871839275222246405745257275088548364400416034343698204186575808495616n]))
+          .not.to.throw();
+        expect(funcFactory(poseidonOpt, [21888242871839275222246405745257275088548364400416034343698204186575808495617n]))
+          .to.throw("One or more inputs are not in the field");
+        expect(funcFactory(poseidonOpt, ([-1n]), false))
+          .to.throw("One or more inputs are not in the field");
+
+        expect(funcFactory(poseidonReference, [21888242871839275222246405745257275088548364400416034343698204186575808495616n]))
+          .not.to.throw();
+        expect(funcFactory(poseidonReference, [21888242871839275222246405745257275088548364400416034343698204186575808495617n]))
+          .to.throw("One or more inputs are not in the field");
+        expect(funcFactory(poseidonReference, ([-1n]), false))
+          .to.throw("One or more inputs are not in the field");
     });
 });
