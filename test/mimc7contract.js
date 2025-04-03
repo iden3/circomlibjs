@@ -41,7 +41,7 @@ describe("MiMC Smart contract test", function () {
 
     });
 
-    it("Shold calculate the mimc correctly", async () => {
+    it("Should calculate the mimc correctly", async () => {
 
         const res = await mimc["MiMCpe7"](1,2);
 

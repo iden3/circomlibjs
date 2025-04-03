@@ -22,7 +22,7 @@ export async function buildPoseidon() {
         } else {
             buff = arr;
             n = buff.byteLength / 32;
-            if (n*32 != buff.byteLength) throw new Error("Invalid iput buff size");
+            if (n*32 != buff.byteLength) throw new Error("Invalid input buff size");
         }
         bn128.tm.setBuff(pIn, buff);
 
