@@ -181,9 +181,19 @@ describe("EdDSA js test", function () {
         const negSig = { R8: signature.R8, S: Scalar.sub(eddsa.babyJub.subOrder, signature.S) };
         assert.isFalse(eddsa.verifyPoseidon(msg, negSig, pubKey));
 
-        // Raw negative BigInt S — mulPointEscalar must not loop forever.
+        // Raw negative BigInt S must be rejected at the bounds check, before
+        // ever reaching mulPointEscalar. Spy by replacing the primitive with
+        // one that throws — verify must still return false without invoking it.
         const rawNegSig = { R8: signature.R8, S: Scalar.neg(signature.S) };
-        assert.isFalse(eddsa.verifyPoseidon(msg, rawNegSig, pubKey));
+        const originalMul = eddsa.babyJub.mulPointEscalar;
+        eddsa.babyJub.mulPointEscalar = () => {
+            throw new Error("mulPointEscalar must not be reached for negative S");
+        };
+        try {
+            assert.isFalse(eddsa.verifyPoseidon(msg, rawNegSig, pubKey));
+        } finally {
+            eddsa.babyJub.mulPointEscalar = originalMul;
+        }
     });
 
 });
