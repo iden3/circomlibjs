@@ -6,10 +6,10 @@ const assert = chai.assert;
 import buildEddsa from "../src/eddsa.js";
 
 const fromHexString = hexString =>
-  new Uint8Array(hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    new Uint8Array(hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
 
 const toHexString = bytes =>
-  bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
+    bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
 
 
 describe("EdDSA js test", function () {
@@ -42,19 +42,19 @@ describe("EdDSA js test", function () {
         assert(F.eq(signature.R8[1], F.e("20125634407542493427571099944365246191501563803226486072348038614369379124499")));
         // console.log(Scalar.toString(signature.S));
         assert(Scalar.eq(signature.S, Scalar.e("2129243915978267980511515511350111723623685317644064470882297086073041379651")));
-        
+
         const pSignature = eddsa.packSignature(signature);
 
         // console.log(toHexString(pSignature));
-        assert.equal(toHexString(pSignature), ""+
-            "138501d9e734e73f485269bcdc29a9ef2da3fac2f5c9653761d0364f95b47eac"+
+        assert.equal(toHexString(pSignature), "" +
+            "138501d9e734e73f485269bcdc29a9ef2da3fac2f5c9653761d0364f95b47eac" +
             "43e1a02b56ff3dacfdac040f3e8c2023dc259ba3f6880ca8ad246b4bfe1bb504");
 
         const uSignature = eddsa.unpackSignature(pSignature);
         assert(eddsa.verifyPedersen(msgBuf, uSignature, pubKey));
 
     });
-    
+
     it("Sign (using Mimc7) a single 10 bytes from 0 to 9", () => {
         const F = eddsa.babyJub.F;
         const msgBuf = fromHexString("000102030405060708090000");
@@ -79,12 +79,12 @@ describe("EdDSA js test", function () {
         assert(F.eq(signature.R8[1], F.e("15383486972088797283337779941324724402501462225528836549661220478783371668959")));
         // console.log(Scalar.toString(signature.S));
         assert(Scalar.eq(signature.S, Scalar.e("2523202440825208709475937830811065542425109372212752003460238913256192595070")));
-        
+
         const pSignature = eddsa.packSignature(signature);
 
         // console.log(toHexString(pSignature));
-        assert.equal(toHexString(pSignature), ""+
-            "dfedb4315d3f2eb4de2d3c510d7a987dcab67089c8ace06308827bf5bcbe02a2"+
+        assert.equal(toHexString(pSignature), "" +
+            "dfedb4315d3f2eb4de2d3c510d7a987dcab67089c8ace06308827bf5bcbe02a2" +
             "7ed40dab29bf993c928e789d007387998901a24913d44fddb64b1f21fc149405");
 
         const uSignature = eddsa.unpackSignature(pSignature);
@@ -116,12 +116,12 @@ describe("EdDSA js test", function () {
         assert(F.eq(signature.R8[1], F.e("15383486972088797283337779941324724402501462225528836549661220478783371668959")));
         // console.log(Scalar.toString(signature.S));
         assert(Scalar.eq(signature.S, Scalar.e("1672775540645840396591609181675628451599263765380031905495115170613215233181")));
-        
+
         const pSignature = eddsa.packSignature(signature);
 
         // console.log(toHexString(pSignature));
-        assert.equal(toHexString(pSignature), ""+
-            "dfedb4315d3f2eb4de2d3c510d7a987dcab67089c8ace06308827bf5bcbe02a2"+
+        assert.equal(toHexString(pSignature), "" +
+            "dfedb4315d3f2eb4de2d3c510d7a987dcab67089c8ace06308827bf5bcbe02a2" +
             "9d043ece562a8f82bfc0adb640c0107a7d3a27c1c7c1a6179a0da73de5c1b203");
 
         const uSignature = eddsa.unpackSignature(pSignature);
@@ -153,15 +153,47 @@ describe("EdDSA js test", function () {
         assert(F.eq(signature.R8[1], F.e("15383486972088797283337779941324724402501462225528836549661220478783371668959")));
         // console.log(Scalar.toString(signature.S));
         assert(Scalar.eq(signature.S, Scalar.e("1868336918738674306327358602987493427631678603535639134028485964115448322340")));
-        
+
         const pSignature = eddsa.packSignature(signature);
 
         // console.log(toHexString(pSignature));
-        assert.equal(toHexString(pSignature), ""+
-            "dfedb4315d3f2eb4de2d3c510d7a987dcab67089c8ace06308827bf5bcbe02a2"+
+        assert.equal(toHexString(pSignature), "" +
+            "dfedb4315d3f2eb4de2d3c510d7a987dcab67089c8ace06308827bf5bcbe02a2" +
             "24599218a1c2e5290bf58b2eec37bfec1395179ed5e817f10f86c9e7f3702104");
 
         const uSignature = eddsa.unpackSignature(pSignature);
         assert(eddsa.verifyMiMCSponge(msg, uSignature, pubKey));
     });
+
+    it("Reject a signature with a negative S", function () {
+        this.timeout(5000);
+        const msgBuf = fromHexString("000102030405060708090000");
+        const msg = eddsa.babyJub.F.e(Scalar.fromRprLE(msgBuf, 0));
+
+        const prvKey = Buffer.from("0001020304050607080900010203040506070809000102030405060708090001", "hex");
+        const pubKey = eddsa.prv2pub(prvKey);
+
+        const signature = eddsa.signPoseidon(prvKey, msg);
+        assert(eddsa.verifyPoseidon(msg, signature, pubKey));
+
+        // Modular negation: subOrder - S is the additive inverse of S in the
+        // scalar subgroup, and stays inside the [0, subOrder) bounds check.
+        const negSig = { R8: signature.R8, S: Scalar.sub(eddsa.babyJub.subOrder, signature.S) };
+        assert.isFalse(eddsa.verifyPoseidon(msg, negSig, pubKey));
+
+        // Raw negative BigInt S must be rejected at the bounds check, before
+        // ever reaching mulPointEscalar. Spy by replacing the primitive with
+        // one that throws — verify must still return false without invoking it.
+        const rawNegSig = { R8: signature.R8, S: Scalar.neg(signature.S) };
+        const originalMul = eddsa.babyJub.mulPointEscalar;
+        eddsa.babyJub.mulPointEscalar = () => {
+            throw new Error("mulPointEscalar must not be reached for negative S");
+        };
+        try {
+            assert.isFalse(eddsa.verifyPoseidon(msg, rawNegSig, pubKey));
+        } finally {
+            eddsa.babyJub.mulPointEscalar = originalMul;
+        }
+    });
+
 });

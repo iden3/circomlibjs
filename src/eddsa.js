@@ -171,6 +171,7 @@ class Eddsa {
         if (!Array.isArray(A)) return false;
         if (A.length!= 2) return false;
         if (!this.babyJub.inCurve(A)) return false;
+        if (Scalar.lt(sig.S, Scalar.e(0))) return false;
         if (Scalar.geq(sig.S, this.babyJub.subOrder)) return false;
 
         const R8p = this.babyJub.packPoint(sig.R8);
@@ -204,6 +205,7 @@ class Eddsa {
         if (!Array.isArray(A)) return false;
         if (A.length!= 2) return false;
         if (!this.babyJub.inCurve(A)) return false;
+        if (Scalar.lt(sig.S, Scalar.e(0))) return false;
         if (sig.S>= this.babyJub.subOrder) return false;
 
         const hm = this.mimc7.multiHash([sig.R8[0], sig.R8[1], A[0], A[1], msg]);
@@ -228,6 +230,7 @@ class Eddsa {
         if (!Array.isArray(A)) return false;
         if (A.length!= 2) return false;
         if (!this.babyJub.inCurve(A)) return false;
+        if (Scalar.lt(sig.S, Scalar.e(0))) return false;
         if (sig.S>= this.babyJub.subOrder) return false;
 
         const hm = this.poseidon([sig.R8[0], sig.R8[1], A[0], A[1], msg]);
@@ -252,6 +255,7 @@ class Eddsa {
         if (!Array.isArray(A)) return false;
         if (A.length!= 2) return false;
         if (!this.babyJub.inCurve(A)) return false;
+        if (Scalar.lt(sig.S, Scalar.e(0))) return false;
         if (sig.S>= this.babyJub.subOrder) return false;
 
         const hm = this.mimcSponge.multiHash([sig.R8[0], sig.R8[1], A[0], A[1], msg]);

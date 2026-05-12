@@ -1,4 +1,4 @@
-import { getCurveFromName, Scalar }  from "ffjavascript";
+import { getCurveFromName, Scalar } from "ffjavascript";
 
 export default async function buildBabyJub() {
     const bn128 = await getCurveFromName("bn128", true);
@@ -9,7 +9,7 @@ class BabyJub {
     constructor(F) {
         this.F = F;
         this.p = Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
-        this.pm1d2 = Scalar.div(Scalar.sub(this.p, Scalar.e(1)),  Scalar.e(2));
+        this.pm1d2 = Scalar.div(Scalar.sub(this.p, Scalar.e(1)), Scalar.e(2));
 
         this.Generator = [
             F.e("995203441582195749578291179787384436505546430278305826713579947235728471134"),
@@ -26,7 +26,7 @@ class BabyJub {
     }
 
 
-    addPoint(a,b) {
+    addPoint(a, b) {
         const F = this.F;
 
         const res = [];
@@ -36,8 +36,8 @@ class BabyJub {
         res[1] = bigInt((a[1]*b[1] - cta*a[0]*b[0]) * bigInt(bigInt("1") - d*a[0]*b[0]*a[1]*b[1]).inverse(q)).affine(q);
         */
 
-        const beta = F.mul(a[0],b[1]);
-        const gamma = F.mul(a[1],b[0]);
+        const beta = F.mul(a[0], b[1]);
+        const gamma = F.mul(a[1], b[0]);
         const delta = F.mul(
             F.sub(a[1], F.mul(this.A, a[0])),
             F.add(b[0], b[1])
@@ -51,7 +51,7 @@ class BabyJub {
         );
 
         res[1] = F.div(
-            F.add(delta, F.sub(F.mul(this.A,beta), gamma)),
+            F.add(delta, F.sub(F.mul(this.A, beta), gamma)),
             F.sub(F.one, dtau)
         );
 
@@ -60,11 +60,16 @@ class BabyJub {
 
     mulPointEscalar(base, e) {
         const F = this.F;
-        let res = [F.e("0"),F.e("1")];
+        let res = [F.e("0"), F.e("1")];
         let rem = e;
         let exp = base;
 
-        while (! Scalar.isZero(rem)) {
+        if (Scalar.lt(rem, Scalar.e(0))) {
+            rem = Scalar.neg(rem);
+            exp = [F.neg(exp[0]), exp[1]];
+        }
+
+        while (!Scalar.isZero(rem)) {
             if (Scalar.isOdd(rem)) {
                 res = this.addPoint(res, exp);
             }
@@ -78,7 +83,7 @@ class BabyJub {
     inSubgroup(P) {
         const F = this.F;
         if (!this.inCurve(P)) return false;
-        const res= this.mulPointEscalar(P, this.subOrder);
+        const res = this.mulPointEscalar(P, this.subOrder);
         return (F.isZero(res[0]) && F.eq(res[1], F.one));
     }
 
@@ -124,7 +129,7 @@ class BabyJub {
         );
 
         const x2h = F.exp(x2, F.half);
-        if (! F.eq(F.one, x2h)) return null;
+        if (!F.eq(F.one, x2h)) return null;
 
         let x = F.sqrt(x2);
 
