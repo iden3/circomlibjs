@@ -214,10 +214,6 @@ export default class Contract {
     log3()  { this.code.push(0xa3); }
     log4()  { this.code.push(0xa4); }
 
-    dupn() { this.code.push(0xe6); }
-    swapn() { this.code.push(0xe7); }
-    exchange() { this.code.push(0xe8); }
-
     create()  { this.code.push(0xf0); }
     call()  { this.code.push(0xf1); }
     callcode()  { this.code.push(0xf2); }
