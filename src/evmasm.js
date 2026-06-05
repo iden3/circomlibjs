@@ -153,6 +153,25 @@ export default class Contract {
         this._fillLabel(name);
     }
 
+    tload()  { this.code.push(0x5c); }
+    tstore()  { this.code.push(0x5d); }
+    mcopy()  { this.code.push(0x5e); }
+
+    // Records the current code position as a label WITHOUT emitting a JUMPDEST byte.
+    // Used for data section references (CODECOPY offsets).
+    dataLabel(name) {
+        if (typeof this.labels[name] !== "undefined") {
+            throw new Error("Label already defined");
+        }
+        this.labels[name] = this.code.length;
+        this._fillLabel(name);
+    }
+
+    // Appends raw bytes to code (no opcode prefix, used for data sections).
+    pushRawBytes(bytes) {
+        for (const b of bytes) this.code.push(b);
+    }
+
     push(data) {
         if ((typeof data !== "string") || (data.slice(0,2) != "0x")) {
             let v = Scalar.e(data);
