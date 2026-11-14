@@ -109,12 +109,18 @@ class BabyJub {
         const F = this.F;
         let sign = false;
         const P = new Array(2);
-        if (buff[31] & 0x80) {
+        // Work on a copy so that the caller's buffer is not modified
+        const yBuff = new Uint8Array(32);
+        yBuff.set(buff.subarray(0, 32));
+        if (yBuff[31] & 0x80) {
             sign = true;
-            buff[31] = buff[31] & 0x7F;
+            yBuff[31] = yBuff[31] & 0x7F;
         }
-        P[1] = F.fromRprLE(buff, 0);
-        if (Scalar.gt(F.toObject(P[1]), this.p)) return null;
+        // Reject non-canonical y coordinates (y >= p), which would otherwise be
+        // reduced and decode to the same point as y - p
+        const y = Scalar.fromRprLE(yBuff, 0, 32);
+        if (Scalar.geq(y, this.p)) return null;
+        P[1] = F.e(y);
 
         const y2 = F.square(P[1]);
 
@@ -123,14 +129,22 @@ class BabyJub {
             F.sub(this.A, F.mul(this.D, y2))
         );
 
-        const x2h = F.exp(x2, F.half);
-        if (! F.eq(F.one, x2h)) return null;
+        let x;
+        if (F.isZero(x2)) {
+            // x = 0, e.g. the identity (0, 1). There is no negative zero, so a
+            // set sign bit would be a second encoding of the same point.
+            if (sign) return null;
+            x = F.zero;
+        } else {
+            const x2h = F.exp(x2, F.half);
+            if (! F.eq(F.one, x2h)) return null;
 
-        let x = F.sqrt(x2);
+            x = F.sqrt(x2);
 
-        if (x == null) return null;
+            if (x == null) return null;
 
-        if (sign) x = F.neg(x);
+            if (sign) x = F.neg(x);
+        }
 
         P[0] = x;
 
