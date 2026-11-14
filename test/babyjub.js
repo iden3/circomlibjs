@@ -171,4 +171,42 @@ describe("Baby Jub js test", function () {
         assert(babyjub.F.eq(p2[0], babyjub.F.e("6890855772600357754907169075114257697580319025794532037257385534741338397365")));
         assert(babyjub.F.eq(p2[1], babyjub.F.e("4338620300185947561074059802482547481416142213883829469920100239455078257889")));
     });
+    it("should packPoint - unpackPoint the identity", () => {
+        const p = [babyjub.F.e(0), babyjub.F.e(1)];
+        const buf = babyjub.packPoint(p);
+        const p2 = babyjub.unpackPoint(buf);
+        assert(p2 !== null);
+        assert(babyjub.F.eq(p2[0], p[0]));
+        assert(babyjub.F.eq(p2[1], p[1]));
+    });
+
+    it("should not unpackPoint the identity with the sign bit set", () => {
+        const buf = babyjub.packPoint([babyjub.F.e(0), babyjub.F.e(1)]);
+        buf[31] |= 0x80;
+        assert.isNull(babyjub.unpackPoint(buf));
+    });
+
+    it("should not unpackPoint a y coordinate that is not reduced", () => {
+        // y = 0 is on the curve, y = p and y = p + 1 are non-canonical encodings
+        // of the points with y = 0 and y = 1
+        for (const [y, valid] of [[Scalar.e(0), true], [babyjub.p, false], [Scalar.add(babyjub.p, Scalar.e(1)), false]]) {
+            const buf = new Uint8Array(32);
+            Scalar.toRprLE(buf, 0, y, 32);
+            assert.equal(babyjub.unpackPoint(buf) !== null, valid);
+        }
+    });
+
+    it("should not modify the buffer passed to unpackPoint", () => {
+        const p = [
+            babyjub.F.e("6890855772600357754907169075114257697580319025794532037257385534741338397365"),
+            babyjub.F.e("4338620300185947561074059802482547481416142213883829469920100239455078257889"),
+        ];
+        const buf = babyjub.packPoint(babyjub.mulPointEscalar(p, babyjub.subOrder - 1n));
+        assert(buf[31] & 0x80);
+        const copy = buf.slice();
+        const p1 = babyjub.unpackPoint(buf);
+        assert.deepEqual(buf, copy);
+        const p2 = babyjub.unpackPoint(buf);
+        assert(babyjub.F.eq(p1[0], p2[0]) && babyjub.F.eq(p1[1], p2[1]));
+    });
 });
